@@ -24,3 +24,29 @@
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
+Permissions-Policy:
+  microphone=(self), geolocation=(), camera=(), payment=(), interest-cohort=()
+
+<meta http-equiv="Content-Security-Policy"
+  content="default-src 'self';
+           script-src 'self';
+           style-src 'self' 'unsafe-inline';
+           img-src 'self' data: https:;
+           media-src 'self' blob: data: https:;
+           connect-src 'self';
+           frame-src https://www.youtube-nocookie.com https://www.youtube.com;
+           object-src 'none'; base-uri 'self'; form-action 'self'">
+
+Content-Security-Policy:
+default-src 'self';
+script-src 'self';
+style-src 'self' 'unsafe-inline';
+img-src 'self' data: https:;
+media-src 'self' blob: data: https:;
+connect-src 'self';
+frame-src https://www.youtube-nocookie.com
+https://www.youtube.com
+;
+object-src 'none';
+base-uri 'self';
+form-action 'self'
