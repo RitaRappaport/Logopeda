@@ -1,0 +1,37 @@
+# utwórz foldery meta, jeśli ich nie ma
+mkdir .github 2>$null
+mkdir .github\workflows 2>$null
+
+# utwórz plik .github/dependabot.yml
+@"
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "Europe/Warsaw"
+    open-pull-requests-limit: 5
+    allow:
+      - dependency-type: "production"
+      - dependency-type: "development"
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      vite-and-build:
+        patterns:
+          - "vite"
+          - "@vitejs/*"
+          - "rollup*"
+      react-and-ecosystem:
+        patterns:
+          - "react"
+          - "react-*"
+          - "@types/react*"
+"@ | Out-File -Encoding utf8 .github\dependabot.yml
+
+git add .github\dependabot.yml
+git commit -m "chore(deps): enable Dependabot weekly grouped updates"
+git push
