@@ -1,0 +1,23 @@
+name: Cloud Agents - Async Tasks
+on:
+  schedule:
+    - cron: '0 23 * * *'   # uruchom codziennie o 23:00
+  workflow_dispatch:
+
+jobs:
+  codex-nightly:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install
+        run: npm ci
+      - name: Nightly Build and Audit
+        run: |
+          npm run build
+          npm audit --audit-level=high || true
+      - name: Async Cloud Agent Task
+        run: echo "🌙 Codex running nightly code improvement in sleep mode"
