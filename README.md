@@ -20,6 +20,12 @@ npm run dev
 npm run build && npm run preview
 ```
 
+## Integracja z VS Code
+- Otwórz katalog w Visual Studio Code (`File → Open Folder...`).
+- Zaakceptuj rekomendowane rozszerzenia (ESLint, Prettier, Tailwind CSS IntelliSense, i18n Ally, SVG Viewer).
+- Skorzystaj z przygotowanych zadań (`Terminal → Run Task…`) do instalacji zależności oraz uruchomienia/deployu (`Start dev server`, `Build production bundle`, `Preview production build`).
+- Szczegółowe wskazówki znajdziesz w [docs/vscode_integration.md](docs/vscode_integration.md) wraz z instrukcjami, jak wdrożyć moduł logopedyczny opisany w raporcie Sprintu 1.
+
 ## Notatki bezpieczeństwa
 - **CSP** w `index.html` ogranicza źródła (w tym iframy YT).
 - **Brak eval/inline JS** (poza style-src 'unsafe-inline' dla Tailwinda).

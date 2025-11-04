@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-labelledby="title desc">
+  <title id="title">Lateral tongue sweep illustration</title>
+  <desc id="desc">Tongue moving side to side against inner cheeks.</desc>
+  <rect width="120" height="120" rx="12" fill="#f0f9ff" />
+  <circle cx="60" cy="60" r="36" fill="#bae6fd" stroke="#1d4ed8" stroke-width="2" />
+  <path d="M36 60h48" stroke="#1d4ed8" stroke-width="4" stroke-linecap="round" />
+  <path d="M48 72c6 4 18 4 24 0" stroke="#1d4ed8" stroke-width="3" fill="none" />
+  <path d="M30 50l-8 10 8 10" stroke="#0ea5e9" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  <path d="M90 50l8 10-8 10" stroke="#0ea5e9" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+</svg>

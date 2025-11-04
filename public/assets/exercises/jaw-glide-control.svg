@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-labelledby="title desc">
+  <title id="title">Jaw glide control illustration</title>
+  <desc id="desc">Jaw moving side to side while staying level.</desc>
+  <rect width="120" height="120" rx="12" fill="#ecfccb" />
+  <rect x="30" y="40" width="60" height="40" rx="10" fill="#bef264" stroke="#3f6212" stroke-width="2" />
+  <rect x="36" y="70" width="48" height="16" rx="8" fill="#a3e635" stroke="#365314" stroke-width="2" />
+  <path d="M36 78h-12" stroke="#65a30d" stroke-width="4" stroke-linecap="round" />
+  <path d="M84 78h12" stroke="#65a30d" stroke-width="4" stroke-linecap="round" />
+  <path d="M42 52h36" stroke="#365314" stroke-width="3" stroke-linecap="round" />
+</svg>

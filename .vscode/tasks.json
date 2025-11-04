@@ -1,0 +1,37 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Install dependencies",
+      "type": "shell",
+      "command": "npm install",
+      "group": "none",
+      "problemMatcher": []
+    },
+    {
+      "label": "Start dev server",
+      "type": "npm",
+      "script": "dev",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "detail": "Run Vite in dev mode with hot module replacement",
+      "problemMatcher": []
+    },
+    {
+      "label": "Build production bundle",
+      "type": "npm",
+      "script": "build",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Preview production build",
+      "type": "npm",
+      "script": "preview",
+      "group": "none",
+      "problemMatcher": []
+    }
+  ]
+}

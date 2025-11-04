@@ -1,5 +1,7 @@
-﻿node_modules
+node_modules
 dist
-.vscode
+.vscode/*
+!.vscode/extensions.json
+!.vscode/tasks.json
 *.log
 .DS_Store

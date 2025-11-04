@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-labelledby="title desc">
+  <title id="title">Sibilant precision drill illustration</title>
+  <desc id="desc">Air stream directed through straw at target.</desc>
+  <rect width="120" height="120" rx="12" fill="#cffafe" />
+  <circle cx="90" cy="60" r="14" fill="#0ea5e9" stroke="#155e75" stroke-width="2" />
+  <circle cx="90" cy="60" r="6" fill="#e0f2fe" />
+  <rect x="28" y="52" width="28" height="16" rx="8" fill="#22d3ee" stroke="#0f766e" stroke-width="2" />
+  <path d="M28 60h-12" stroke="#0f766e" stroke-width="4" stroke-linecap="round" />
+  <path d="M56 60c12 0 20 0 30 0" stroke="#0f172a" stroke-width="3" stroke-linecap="round" />
+  <path d="M62 54c8-6 20-6 28 0" stroke="#164e63" stroke-width="2" stroke-linecap="round" stroke-dasharray="3 3" />
+</svg>
