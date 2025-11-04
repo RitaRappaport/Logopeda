@@ -9,13 +9,17 @@ function autoCorrelate(buf: Float32Array, sampleRate: number) {
   for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i]
   rms = Math.sqrt(rms / SIZE)
   if (rms < 0.01) return -1
+
   let r1 = 0, r2 = SIZE - 1, thres = 0.2
   for (let i = 0; i < SIZE / 2; i++) if (Math.abs(buf[i]) < thres) { r1 = i; break }
   for (let i = 1; i < SIZE / 2; i++) if (Math.abs(buf[SIZE - i]) < thres) { r2 = SIZE - i; break }
   const buf2 = buf.slice(r1, r2)
   SIZE = buf2.length
+
   const c = new Array(SIZE).fill(0)
-  for (let i = 0; i < SIZE; i++) for (let j = 0; j < SIZE - i; j++) c[i] += buf2[j] * buf2[j + i]
+  for (let i = 0; i < SIZE; i++) {
+    for (let j = 0; j < SIZE - i; j++) c[i] += buf2[j] * buf2[j + i]
+  }
   let d = 0; while (c[d] > c[d + 1]) d++
   let maxval = -1, maxpos = -1
   for (let i = d; i < SIZE; i++) { if (c[i] > maxval) { maxval = c[i]; maxpos = i } }
@@ -54,7 +58,6 @@ export default function Studio() {
 
   const micCtxRef = useRef<AudioContext | null>(null)
   const micAnalyserRef = useRef<AnalyserNode | null>(null)
-  const micBufRef = useRef<Float32Array | null>(null)
   const rafMicRef = useRef<number | null>(null)
   const micWaveRef = useRef<HTMLCanvasElement>(null)
   const micPitchRef = useRef<HTMLCanvasElement>(null)
@@ -65,7 +68,6 @@ export default function Studio() {
   const audioElRef = useRef<HTMLAudioElement>(null)
   const refCtxRef = useRef<AudioContext | null>(null)
   const refAnalyserRef = useRef<AnalyserNode | null>(null)
-  const refBufRef = useRef<Float32Array | null>(null)
   const rafRefRef = useRef<number | null>(null)
   const refWaveRef = useRef<HTMLCanvasElement>(null)
   const refPitchRef = useRef<HTMLCanvasElement>(null)
@@ -106,8 +108,7 @@ export default function Studio() {
   }
 
   async function startRec() {
-    // czyścimy stare nagranie
-    setRecordUrl(null)
+    setRecordUrl(null) // czyść poprzednie
 
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
     mediaStreamRef.current = stream
@@ -119,9 +120,8 @@ export default function Studio() {
     micAnalyserRef.current = analyser
     const src = ctx.createMediaStreamSource(stream)
     src.connect(analyser)
-    micBufRef.current = new Float32Array(analyser.fftSize)
 
-    // MediaRecorder – pełne nagrywanie do pliku do chwili Stop
+    // MediaRecorder
     const mr = new MediaRecorder(stream)
     mediaRecRef.current = mr
     micChunksRef.current = []
@@ -135,25 +135,24 @@ export default function Studio() {
     setIsRec(true)
     loopMic()
 
-    if (maxSeconds > 0) {
-      stopTimerRef.current = window.setTimeout(() => stopRec(), maxSeconds * 1000)
-    }
+    if (maxSeconds > 0) stopTimerRef.current = window.setTimeout(() => stopRec(), maxSeconds * 1000)
   }
 
   function loopMic() {
     const analyser = micAnalyserRef.current
-    if (!analyser) return
-    const buf = micBufRef.current!
-    (analyser as any).getFloatTimeDomainData(buf as unknown as Float32Array)
+    if (!analyser || !micCtxRef.current || !micWaveRef.current || !micPitchRef.current) return
 
+    // LOKALNY bufor = brak konfliktów typów
+    const buf = new Float32Array(analyser.fftSize)
+    analyser.getFloatTimeDomainData(buf)
 
-    if (micWaveRef.current) drawWave(micWaveRef.current, buf, '#1c7ed6')
+    drawWave(micWaveRef.current, buf, '#1c7ed6')
 
-    const pitch = autoCorrelate(buf, micCtxRef.current!.sampleRate)
+    const pitch = autoCorrelate(buf, micCtxRef.current.sampleRate)
     micPitchSmoothed.current = smooth(micPitchSmoothed.current, pitch, 0.35)
-    if (micPitchRef.current) drawPitch(micPitchRef.current, micPitchSmoothed.current, TARGETS[refWord], '#1c7ed6')
+    drawPitch(micPitchRef.current, micPitchSmoothed.current, TARGETS[refWord], '#1c7ed6')
 
-    // licz kompatybilność tylko gdy mamy oba
+    // zgodność jeśli mamy też wzorzec
     if (refPitchSmoothed.current > 0 && micPitchSmoothed.current > 0) {
       const [lo, hi] = TARGETS[refWord]
       const center = (lo + hi) / 2
@@ -214,20 +213,21 @@ export default function Studio() {
     const src = ctx.createMediaElementSource(audioElRef.current)
     src.connect(analyser)
     analyser.connect(ctx.destination)
-    refBufRef.current = new Float32Array(analyser.fftSize)
     loopRef()
   }
 
   function loopRef() {
     const analyser = refAnalyserRef.current
-    const buf = refBufRef.current
-    if (!analyser || !buf) return
-    (analyser as any).getFloatTimeDomainData(buf as unknown as Float32Array)
+    if (!analyser || !refCtxRef.current || !refWaveRef.current || !refPitchRef.current) return
 
-    if (refWaveRef.current) drawWave(refWaveRef.current, buf, '#0ea5e9')
-    const pitch = autoCorrelate(buf, refCtxRef.current!.sampleRate)
+    const buf = new Float32Array(analyser.fftSize)
+    analyser.getFloatTimeDomainData(buf)
+
+    drawWave(refWaveRef.current, buf, '#0ea5e9')
+    const pitch = autoCorrelate(buf, refCtxRef.current.sampleRate)
     refPitchSmoothed.current = smooth(refPitchSmoothed.current, pitch, 0.35)
-    if (refPitchRef.current) drawPitch(refPitchRef.current, refPitchSmoothed.current, TARGETS[refWord], '#0ea5e9', 'rgba(18,184,134,0.15)')
+    drawPitch(refPitchRef.current, refPitchSmoothed.current, TARGETS[refWord], '#0ea5e9', 'rgba(18,184,134,0.15)')
+
     rafRefRef.current = requestAnimationFrame(loopRef)
   }
 
@@ -290,9 +290,7 @@ export default function Studio() {
             <input type="file" accept="audio/*" onChange={onPickRefFile} className="hidden" />
           </label>
           {refFileUrl && (
-            <>
-              <audio ref={audioElRef} src={refFileUrl} controls onPlay={setupRefAnalyser} className="ml-2" />
-            </>
+            <audio ref={audioElRef} src={refFileUrl} controls onPlay={setupRefAnalyser} className="ml-2" />
           )}
         </div>
         <div className="grid md:grid-cols-2 gap-3">
