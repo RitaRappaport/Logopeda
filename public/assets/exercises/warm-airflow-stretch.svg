@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-labelledby="title desc">
+  <title id="title">Warm airflow stretch illustration</title>
+  <desc id="desc">Profile of head with arrows showing warm airflow exhale.</desc>
+  <rect width="120" height="120" rx="12" fill="#fef3c7" />
+  <path d="M30 70c0-22 12-40 34-40s26 14 26 30-12 30-34 30-26-8-26-20z" fill="#fde68a" stroke="#92400e" stroke-width="2" />
+  <path d="M62 45c6 2 12 8 12 16" fill="none" stroke="#78350f" stroke-width="2" stroke-linecap="round" />
+  <path d="M52 80c6 4 18 4 24 0" fill="none" stroke="#78350f" stroke-width="2" stroke-linecap="round" />
+  <path d="M85 70c8 2 16 6 20 12" fill="none" stroke="#2563eb" stroke-width="3" stroke-linecap="round" stroke-dasharray="4 4" />
+  <path d="M80 90c6 2 14 2 20 0" fill="none" stroke="#1d4ed8" stroke-width="3" stroke-linecap="round" />
+  <path d="M78 100c5 1 11 1 16 0" fill="none" stroke="#1e3a8a" stroke-width="3" stroke-linecap="round" />
+</svg>

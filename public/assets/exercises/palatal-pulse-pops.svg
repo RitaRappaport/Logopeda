@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-labelledby="title desc">
+  <title id="title">Palatal pulse pops illustration</title>
+  <desc id="desc">Soft palate lifting with pulses.</desc>
+  <rect width="120" height="120" rx="12" fill="#ede9fe" />
+  <path d="M30 80c0-20 12-36 30-36s30 16 30 36" fill="#ddd6fe" stroke="#5b21b6" stroke-width="2" />
+  <path d="M40 70c6-6 34-6 40 0" stroke="#7c3aed" stroke-width="4" stroke-linecap="round" fill="none" />
+  <circle cx="60" cy="44" r="10" fill="#c4b5fd" stroke="#5b21b6" stroke-width="2" />
+  <path d="M60 34v-8" stroke="#5b21b6" stroke-width="3" stroke-linecap="round" />
+  <path d="M60 102c6 0 12-2 18-6" stroke="#312e81" stroke-width="3" stroke-linecap="round" fill="none" />
+  <path d="M60 102c-6 0-12-2-18-6" stroke="#312e81" stroke-width="3" stroke-linecap="round" fill="none" />
+</svg>
