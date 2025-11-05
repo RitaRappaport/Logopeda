@@ -1,0 +1,57 @@
+﻿{
+  "id": "vowels-long",
+  "locale": "pl-DE",
+  "title": "Samogłoski długie",
+  "units": [
+    {
+      "phoneme": "iː",
+      "letter": "ie/i (długie)",
+      "examples": ["bieten", "Lied", "viele"],
+      "hint_articulation": "Usta rozciągnięte (jak do uśmiechu), język wysoki i przód. Nie rozluźniaj długości – trzymaj długie i stabilne.",
+      "minimal_pairs": [["iː","ɪ"], ["viel","Vill- (pseudo)"]],
+      "native_sample": "/audio/native/de/i_long_1.mp3"
+    },
+    {
+      "phoneme": "eː",
+      "letter": "eh/ee/e (długie)",
+      "examples": ["Mehl", "See", "geben"],
+      "hint_articulation": "Język wysoki-środkowy, żuchwa lekko opuszczona, policzki delikatnie napięte. Bez dyftongu.",
+      "native_sample": "/audio/native/de/e_long_1.mp3"
+    },
+    {
+      "phoneme": "aː",
+      "letter": "ah/a (długie)",
+      "examples": ["Saal", "Wagen", "Tage"],
+      "hint_articulation": "Szerokie otwarcie, język niski, tył rozluźniony. Długość kluczowa, nie zamykaj na końcu.",
+      "native_sample": "/audio/native/de/a_long_1.mp3"
+    },
+    {
+      "phoneme": "oː",
+      "letter": "oh/o (długie)",
+      "examples": ["Boot", "Brot", "Rose"],
+      "hint_articulation": "Zaokrąglone usta (lekki dzióbek), język tylny-średni, stabilna barwa przez całą długość.",
+      "native_sample": "/audio/native/de/o_long_1.mp3"
+    },
+    {
+      "phoneme": "uː",
+      "letter": "uh/u (długie)",
+      "examples": ["Stuhl", "gut", "Bruder"],
+      "hint_articulation": "Mocniejszy dzióbek, język tylny-wysoki. Nie skracaj długości.",
+      "native_sample": "/audio/native/de/u_long_1.mp3"
+    },
+    {
+      "phoneme": "yː",
+      "letter": "ü (długie)",
+      "examples": ["Tür", "führen", "grün"],
+      "hint_articulation": "Usta zaokrąglone jak przy uː, ale język pozycja jak iː (wysoki-przód). Klasyczne zbliżenie polskim uczniom.",
+      "native_sample": "/audio/native/de/y_long_1.mp3"
+    },
+    {
+      "phoneme": "øː",
+      "letter": "ö (długie)",
+      "examples": ["schön", "Höhle", "böde (x) -> böse"],
+      "hint_articulation": "Zaokrąglone usta, język pozycja jak eː (wysoki-środek). Unikaj dyftongowania.",
+      "native_sample": "/audio/native/de/oe_long_1.mp3"
+    }
+  ]
+}

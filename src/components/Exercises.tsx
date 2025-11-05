@@ -1,36 +1,72 @@
-import React from 'react'
+﻿import React, { useEffect, useState } from "react";
+import ExercisePlayer from "./ExercisePlayer";
 
-const SvgMouth = ({ variant = 'tongue-front' }: { variant?: 'tongue-front'|'tongue-back'|'rounded-lips' }) => {
-  const stroke = '#0f172a'
-  const fill = '#e7f5ff'
-  return (
-    <svg viewBox="0 0 200 120" className="w-full">
-      <rect x="1" y="1" width="198" height="118" fill="white" stroke={stroke} rx="8"/>
-      {/* simple jaw */}
-      <path d="M20,60 Q100,110 180,60" stroke={stroke} fill="none" strokeWidth="2"/>
-      {/* tongue variants */}
-      {variant==='tongue-front' && <path d="M40,70 Q100,90 160,70" fill={fill} stroke={stroke}/>}
-      {variant==='tongue-back' && <path d="M50,80 Q100,60 150,80" fill={fill} stroke={stroke}/>}
-      {variant==='rounded-lips' && <ellipse cx="100" cy="40" rx="30" ry="18" fill={fill} stroke={stroke}/>}
-    </svg>
-  )
-}
+type PackIndex = { packs: { id:string; title:string; description:string; file:string; badge?:string }[] };
+type Unit = {
+  phoneme: string; letter: string; examples: string[];
+  hint_articulation: string; native_sample?: string;
+};
 
-export default function Exercises(){
-  const items = [
-    { key: 'ich', title: 'Ich‑Laut [ç]', hint: 'Język blisko podniebienia twardego, delikatne tarcie.', svg: <SvgMouth variant="tongue-front" /> },
-    { key: 'ach', title: 'Ach‑Laut [x]', hint: 'Bezdźwięczne tarcie w tylnej części jamy ustnej.', svg: <SvgMouth variant="tongue-back" /> },
-    { key: 'ü', title: 'Ü [y]', hint: 'Usta okrągłe jak do „u”, język jak do „i”.', svg: <SvgMouth variant="rounded-lips" /> },
-  ]
+export default function Exercises() {
+  const [packs, setPacks] = useState<PackIndex["packs"]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
+  const [activePack, setActivePack] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/content/exercises/index.json").then(r => r.json())
+      .then((d: PackIndex) => setPacks(d.packs))
+      .catch(() => setError("Nie udało się pobrać listy ćwiczeń."));
+  }, []);
+
+  async function openPack(file: string, id: string) {
+    setActivePack(id); setError(null);
+    try {
+      const d = await fetch(file).then(r => r.json());
+      setUnits(d.units || []);
+    } catch {
+      setError("Błąd ładowania pakietu ćwiczeń.");
+    }
+  }
+
   return (
-    <div className="grid md:grid-cols-3 gap-4">
-      {items.map(it => (
-        <div key={it.key} className="border rounded p-3 space-y-2">
-          <div className="text-lg font-semibold">{it.title}</div>
-          <div className="text-slate-700 text-sm">{it.hint}</div>
-          {it.svg}
+    <div className="max-w-3xl mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">Zestawy ćwiczeń (PL/DE)</h1>
+
+      {!activePack && (
+        <div className="grid gap-3">
+          {packs.map(p => (
+            <button key={p.id}
+              onClick={() => openPack(p.file, p.id)}
+              className="text-left p-4 rounded-2xl border hover:shadow-sm transition">
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-semibold">{p.title}</span>
+                {p.badge && <span className="text-xs px-2 py-0.5 rounded-full border">{p.badge}</span>}
+              </div>
+              <div className="text-sm opacity-70">{p.description}</div>
+            </button>
+          ))}
+          {packs.length === 0 && <div className="opacity-70 text-sm">Ładuję</div>}
         </div>
-      ))}
+      )}
+
+      {activePack && (
+        <div className="grid gap-4">
+          <div className="flex items-center gap-2">
+            <button className="px-3 py-1 rounded-lg border" onClick={() => { setActivePack(null); setUnits([]); }}>
+               Wróć
+            </button>
+            <div className="text-lg font-semibold">Pakiet: {activePack}</div>
+          </div>
+
+          {error && <div className="text-red-600 text-sm">{error}</div>}
+
+          {units.map((u, idx) => (
+            <ExercisePlayer key={idx} unit={u} />
+          ))}
+          {units.length === 0 && !error && <div className="opacity-70 text-sm">Brak jednostek w tym pakiecie.</div>}
+        </div>
+      )}
     </div>
-  )
+  );
 }

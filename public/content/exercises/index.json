@@ -1,0 +1,11 @@
+﻿{
+  "packs": [
+    {
+      "id": "vowels-long",
+      "title": "Samogłoski długie (ā ē ī ō ū / DE: aː eː iː oː uː)",
+      "description": "Ćwiczenia długości i barwy samogłosek długich z podpowiedziami artykulacyjnymi.",
+      "file": "/content/exercises/vowels-long.json",
+      "badge": " Start"
+    }
+  ]
+}
