@@ -1,0 +1,50 @@
+﻿name: Codex Handoff
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Opis zadania przekazywanego do chmury'
+        required: true
+      priority:
+        description: 'Priorytet (low/medium/high)'
+        required: false
+        default: 'medium'
+
+permissions:
+  contents: write
+
+jobs:
+  handoff:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Create tasks folder
+        run: mkdir -p tasks
+
+      - name: Save task to markdown file
+        id: save
+        run: |
+          TS="$(date +'%Y-%m-%d_%H-%M-%S')"
+          FILE="tasks/task-${TS}.md"
+          echo "# Codex Handoff Task" > "${FILE}"
+          echo "" >> "${FILE}"
+          echo "**Time:** ${TS}" >> "${FILE}"
+          echo "**Priority:** ${{ github.event.inputs.priority }}" >> "${FILE}"
+          echo "" >> "${FILE}"
+          echo "**Task:**" >> "${FILE}"
+          echo "${{ github.event.inputs.task }}" >> "${FILE}"
+          echo "file=${FILE}" >> $GITHUB_OUTPUT
+
+      - name: Commit result to repo
+        run: |
+          git config user.name "codex-handoff-bot"
+          git config user.email "codex-handoff-bot@users.noreply.github.com"
+          git add tasks
+          git commit -m "chore(handoff): add task file \`${{ steps.save.outputs.file }}\`" || echo "No changes to commit"
+          git push
+
+      - name: Echo status
+        run: echo " Handoff zapisany jako ${{ steps.save.outputs.file }}"
