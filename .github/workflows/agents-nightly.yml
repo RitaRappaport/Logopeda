@@ -1,9 +1,8 @@
-@"
-name: Cloud Agents - Nightly Build & Audit
+﻿name: Cloud Agents - Nightly Build & Audit
 
 on:
   schedule:
-    - cron: '0 23 * * *'  # codziennie o 23:00 czasu serwera (ok. północ CET/CEST)
+    - cron: '0 23 * * *'  # codziennie o 23:00 UTC (ok. północ CET/CEST)
   workflow_dispatch:      # pozwala uruchomić ręcznie z zakładki Actions
 
 jobs:
@@ -30,9 +29,4 @@ jobs:
         run: npm audit --audit-level=high || true
 
       - name: Nightly note
-        run: echo "🌙 Cloud Agent: nightly checks done. Ready to open PRs if issues found."
-"@ | Out-File -Encoding utf8 .github\workflows\agents-nightly.yml
-
-git add .github\workflows\agents-nightly.yml
-git commit -m "ci(agents): add nightly cloud agent build & audit workflow"
-git push
+        run: echo " Cloud Agent: nightly checks done. Ready to open PRs if issues found."
