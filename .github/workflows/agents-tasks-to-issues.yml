@@ -1,0 +1,47 @@
+name: Agents Tasks → Issues
+
+on:
+  workflow_dispatch:
+    inputs:
+      section:
+        description: "Sekcja do zaczytania (np. 'Priorytet wysoki'; puste = wszystkie)"
+        required: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Parse tasks and create issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const raw = fs.readFileSync('agents-tasks.md','utf8');
+            const wanted = core.getInput('section');
+            const sections = raw.split(/^## /m);
+            let scope = raw;
+            if (wanted) {
+              const sec = sections.find(s => s.trim().startsWith(wanted));
+              if (sec) scope = sec;
+            }
+            const lines = scope.split(/\r?\n/).filter(l => l.trim().startsWith('- [ ]'));
+            if (!lines.length) {
+              core.info('No unchecked tasks found in scope.'); return;
+            }
+            for (const line of lines) {
+              const title = line.replace(/^- \[ \] /,'').trim();
+              core.info(`Creating issue: ${title}`);
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                labels: ['agent-task','todo']
+              });
+            }
+            core.summary.addHeading('Created issues').addList(lines).write();
