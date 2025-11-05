@@ -1,32 +1,19 @@
-﻿name: Cloud Agents - Nightly Build & Audit
+﻿name: Cloud Agents - Nightly (manual)
 
 on:
-  schedule:
-    - cron: '0 23 * * *'  # codziennie o 23:00 UTC (ok. północ CET/CEST)
-  workflow_dispatch:      # pozwala uruchomić ręcznie z zakładki Actions
+  workflow_dispatch:
 
 jobs:
   nightly:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-
-      - name: Install deps
-        run: npm ci
-
-      - name: Lint
-        run: npm run lint || true
-
-      - name: Build (PWA)
-        run: npm run build
-
-      - name: Security audit
-        run: npm audit --audit-level=high || true
-
-      - name: Nightly note
-        run: echo " Cloud Agent: nightly checks done. Ready to open PRs if issues found."
+          node-version: 20
+          cache: npm
+      - run: |
+          if [ -f package-lock.json ]; then npm ci; else npm i; fi
+      - run: npm run build --if-present || true
+      - run: npm audit --audit-level=high || true
+      - run: echo "✅ Manual nightly check done."

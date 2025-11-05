@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
 
       - name: Derive role from title prefix
         id: role
@@ -43,9 +45,6 @@ jobs:
         run: |
           mkdir -p src/lib/audio src/components
           cat > src/lib/audio/simplePitch.ts <<'TS'
-/**
- * Mini pitch (autokorelacja) – wersja startowa.
- */
 export function estimatePitch(samples: Float32Array, sampleRate: number): number {
   const N = samples.length;
   const w = new Float32Array(N);
@@ -64,43 +63,31 @@ TS
           cat > src/components/AudioOverlay.tsx <<'TSX'
 import React, { useEffect, useRef, useState } from "react";
 import { estimatePitch } from "../lib/audio/simplePitch";
-
 export default function AudioOverlay() {
   const canvasRef = useRef<HTMLCanvasElement|null>(null);
   const [hz, setHz] = useState(0);
-
   useEffect(() => {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    let analyser = ctx.createAnalyser();
-    analyser.fftSize = 2048;
+    const analyser = ctx.createAnalyser(); analyser.fftSize = 2048;
     navigator.mediaDevices.getUserMedia({audio:true}).then(stream => {
-      const src = ctx.createMediaStreamSource(stream);
-      src.connect(analyser);
+      const src = ctx.createMediaStreamSource(stream); src.connect(analyser);
       const buf = new Float32Array(analyser.fftSize);
       const draw = () => {
         analyser.getFloatTimeDomainData(buf as any);
-        const pitch = estimatePitch(buf, ctx.sampleRate)|0;
-        setHz(pitch);
+        const pitch = estimatePitch(buf, ctx.sampleRate)|0; setHz(pitch);
         const c = canvasRef.current; if(!c) return requestAnimationFrame(draw);
-        const g = c.getContext("2d")!;
-        g.clearRect(0,0,c.width,c.height);
-        g.beginPath();
-        const mid = c.height/2;
+        const g = c.getContext("2d")!; const mid = c.height/2;
+        g.clearRect(0,0,c.width,c.height); g.beginPath();
         for(let i=0;i<buf.length;i++){
-          const x = i*c.width/buf.length;
-          const y = mid + buf[i]*mid*0.9;
+          const x = i*c.width/buf.length; const y = mid + buf[i]*mid*0.9;
           i===0? g.moveTo(x,y): g.lineTo(x,y);
         }
-        g.strokeStyle = "#0a7";
-        g.lineWidth = 2;
-        g.stroke();
+        g.strokeStyle = "#0a7"; g.lineWidth = 2; g.stroke();
         requestAnimationFrame(draw);
       };
       requestAnimationFrame(draw);
     });
-    return () => {};
   }, []);
-
   return (
     <div className="p-4 rounded-2xl border">
       <div className="mb-2 text-sm opacity-70">Overlay fali + pitch (demo)</div>
@@ -125,64 +112,6 @@ JSON
 { "id":"vowels-long","title":"Samogłoski długie","units":[{"phoneme":"iː","letter":"ie/i","examples":["bieten","Lied"],"hint_articulation":"Usta rozciągnięte, język przód-wysoko."}]}
 JSON
           fi
-          cat > src/components/Exercises.tsx <<'TSX'
-import React, { useEffect, useState } from "react";
-type Unit = { phoneme:string; letter:string; examples:string[]; hint_articulation:string; native_sample?:string; };
-export default function Exercises(){
-  const [packs,setPacks]=useState<any[]>([]); const [units,setUnits]=useState<Unit[]>([]); const [open,setOpen]=useState(false);
-  useEffect(()=>{ fetch("/content/exercises/index.json").then(r=>r.json()).then(d=>setPacks(d.packs||[])).catch(()=>{}); },[]);
-  return (
-    <div className="p-4">
-      {!open ? <div className="grid gap-2">
-        {packs.map(p=> <button key={p.id} className="border rounded-xl p-3 text-left" onClick={async()=>{setOpen(true); const d=await fetch(p.file).then(r=>r.json()); setUnits(d.units||[]);}}>
-          <div className="font-semibold">{p.title}</div><div className="text-sm opacity-70">{p.description}</div>
-        </button>)}
-        {packs.length===0 && <div className="text-sm opacity-70">Ładuję…</div>}
-      </div> : <div className="grid gap-3">
-        <button className="px-3 py-1 rounded-lg border w-fit" onClick={()=>{setOpen(false);setUnits([])}}>← Wróć</button>
-        {units.map((u,i)=><div key={i} className="p-3 border rounded-xl">
-          <div className="font-semibold">/{u.phoneme}/ — {u.letter}</div>
-          <div className="text-sm opacity-70">{u.hint_articulation}</div>
-          <div className="text-sm">Przykłady: {u.examples.join(", ")}</div>
-        </div>)}
-      </div>}
-    </div>
-  );}
-TSX
-
-      - name: Scaffold for agent-ux
-        if: steps.role.outputs.role == 'agent-ux'
-        run: |
-          mkdir -p src
-          if [ -f src/index.css ]; then
-            echo "/* prefers-reduced-motion */ @media (prefers-reduced-motion: reduce){ *{animation:none!important;transition:none!important} }" >> src/index.css
-          else
-            echo "/* prefers-reduced-motion */ @media (prefers-reduced-motion: reduce){ *{animation:none!important;transition:none!important} }" > src/index.css
-          fi
-
-      - name: Scaffold for agent-sec
-        if: steps.role.outputs.role == 'agent-sec'
-        run: |
-          if [ -f index.html ]; then
-            sed -i '1h;1!H;$!d; s#</head>#  <meta http-equiv="Content-Security-Policy" content="default-src '\''self'\''; img-src '\''self'\'' data:; media-src '\''self'\''; script-src '\''self'\''; style-src '\''self'\'' '\''unsafe-inline'\''">\n  <meta http-equiv="Permissions-Policy" content="microphone=() camera=() geolocation=()">\n</head>#' index.html || true
-          fi
-          mkdir -p docs
-          cat > docs/security-notes.md <<'MD'
-# Security notes (GH Pages)
-- CSP/metatagi dodane do `index.html` (ograniczone przez statyczny hosting).
-- Unikamy `<script>` z CDN. 
-- Dalsze wzmocnienia przy migracji na serwer z nagłówkami.
-MD
-
-      - name: Scaffold for agent-cur
-        if: steps.role.outputs.role == 'agent-cur'
-        run: |
-          mkdir -p content
-          cat > content/lekcja-samogloski-dlugie.md <<'MD'
-# Samogłoski długie – instrukcja
-- Ułożenie: iː (usta rozciągnięte, język przód-wysoko), eː, aː, oː, uː, yː, øː.
-- Cel: kontrola długości, brak dyftongowania, stabilna barwa.
-MD
 
       - name: Commit scaffold
         run: |
