@@ -1,10 +1,4 @@
-# utwórz foldery meta, jeśli ich nie ma
-mkdir .github 2>$null
-mkdir .github\workflows 2>$null
-
-# utwórz plik .github/dependabot.yml
-@"
-version: 2
+﻿version: 2
 updates:
   - package-ecosystem: "npm"
     directory: "/"
@@ -30,8 +24,3 @@ updates:
           - "react"
           - "react-*"
           - "@types/react*"
-"@ | Out-File -Encoding utf8 .github\dependabot.yml
-
-git add .github\dependabot.yml
-git commit -m "chore(deps): enable Dependabot weekly grouped updates"
-git push
