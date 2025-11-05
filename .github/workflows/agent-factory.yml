@@ -1,0 +1,206 @@
+name: Agent Factory (issue → branch → scaffold → draft PR)
+
+on:
+  issues:
+    types: [opened, labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  factory:
+    if: contains(github.event.issue.labels.*.name, 'agent-task')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Derive role from title prefix
+        id: role
+        run: |
+          TITLE="${{ github.event.issue.title }}"
+          LOW=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]')
+          ROLE="generic"
+          if echo "$LOW" | grep -q "audio coach"; then ROLE="agent-audio"; fi
+          if echo "$LOW" | grep -q "exercise builder"; then ROLE="agent-ex"; fi
+          if echo "$LOW" | grep -q "ux guard"; then ROLE="agent-ux"; fi
+          if echo "$LOW" | grep -q "security"; then ROLE="agent-sec"; fi
+          if echo "$LOW" | grep -q "content curator"; then ROLE="agent-cur"; fi
+          echo "role=$ROLE" >> "$GITHUB_OUTPUT"
+
+      - name: Create feature branch
+        id: branch
+        run: |
+          NUM=${{ github.event.issue.number }}
+          BR="feature/auto/issue-$NUM"
+          git checkout -b "$BR"
+          echo "branch=$BR" >> "$GITHUB_OUTPUT"
+
+      - name: Scaffold for agent-audio
+        if: steps.role.outputs.role == 'agent-audio'
+        run: |
+          mkdir -p src/lib/audio src/components
+          cat > src/lib/audio/simplePitch.ts <<'TS'
+/**
+ * Mini pitch (autokorelacja) – wersja startowa.
+ */
+export function estimatePitch(samples: Float32Array, sampleRate: number): number {
+  const N = samples.length;
+  const w = new Float32Array(N);
+  for (let i=0; i<N; i++) w[i] = samples[i] * (0.54 - 0.46 * Math.cos((2*Math.PI*i)/(N-1)));
+  const minF=70, maxF=450;
+  const minLag = Math.floor(sampleRate/maxF);
+  const maxLag = Math.floor(sampleRate/minF);
+  let bestLag=0, bestR=0;
+  for (let lag=minLag; lag<=Math.min(maxLag, N-1); lag++){
+    let r=0; for (let i=0;i<N-lag;i++) r += w[i]*w[i+lag];
+    if (r>bestR){bestR=r;bestLag=lag;}
+  }
+  return bestLag ? sampleRate/bestLag : 0;
+}
+TS
+          cat > src/components/AudioOverlay.tsx <<'TSX'
+import React, { useEffect, useRef, useState } from "react";
+import { estimatePitch } from "../lib/audio/simplePitch";
+
+export default function AudioOverlay() {
+  const canvasRef = useRef<HTMLCanvasElement|null>(null);
+  const [hz, setHz] = useState(0);
+
+  useEffect(() => {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    let analyser = ctx.createAnalyser();
+    analyser.fftSize = 2048;
+    navigator.mediaDevices.getUserMedia({audio:true}).then(stream => {
+      const src = ctx.createMediaStreamSource(stream);
+      src.connect(analyser);
+      const buf = new Float32Array(analyser.fftSize);
+      const draw = () => {
+        analyser.getFloatTimeDomainData(buf as any);
+        const pitch = estimatePitch(buf, ctx.sampleRate)|0;
+        setHz(pitch);
+        const c = canvasRef.current; if(!c) return requestAnimationFrame(draw);
+        const g = c.getContext("2d")!;
+        g.clearRect(0,0,c.width,c.height);
+        g.beginPath();
+        const mid = c.height/2;
+        for(let i=0;i<buf.length;i++){
+          const x = i*c.width/buf.length;
+          const y = mid + buf[i]*mid*0.9;
+          i===0? g.moveTo(x,y): g.lineTo(x,y);
+        }
+        g.strokeStyle = "#0a7";
+        g.lineWidth = 2;
+        g.stroke();
+        requestAnimationFrame(draw);
+      };
+      requestAnimationFrame(draw);
+    });
+    return () => { /* no-op cleanup demo */ };
+  }, []);
+
+  return (
+    <div className="p-4 rounded-2xl border">
+      <div className="mb-2 text-sm opacity-70">Overlay fali + pitch (demo)</div>
+      <canvas ref={canvasRef} width={600} height={160} className="w-full border rounded-lg" />
+      <div className="mt-2 text-sm">Pitch (Hz): <b>{hz}</b></div>
+    </div>
+  );
+}
+TSX
+
+      - name: Scaffold for agent-ex
+        if: steps.role.outputs.role == 'agent-ex'
+        run: |
+          mkdir -p public/content/exercises src/components
+          if [ ! -f public/content/exercises/index.json ]; then
+            cat > public/content/exercises/index.json <<'JSON'
+{ "packs": [ { "id":"vowels-long","title":"Samogłoski długie","description":"Zestaw startowy","file":"/content/exercises/vowels-long.json"} ] }
+JSON
+          fi
+          if [ ! -f public/content/exercises/vowels-long.json ]; then
+            cat > public/content/exercises/vowels-long.json <<'JSON'
+{ "id":"vowels-long","title":"Samogłoski długie","units":[{"phoneme":"iː","letter":"ie/i","examples":["bieten","Lied"],"hint_articulation":"Usta rozciągnięte, język przód-wysoko."}]}
+JSON
+          fi
+          cat > src/components/Exercises.tsx <<'TSX'
+import React, { useEffect, useState } from "react";
+type Unit = { phoneme:string; letter:string; examples:string[]; hint_articulation:string; native_sample?:string; };
+export default function Exercises(){
+  const [packs,setPacks]=useState<any[]>([]); const [units,setUnits]=useState<Unit[]>([]); const [open,setOpen]=useState(false);
+  useEffect(()=>{ fetch("/content/exercises/index.json").then(r=>r.json()).then(d=>setPacks(d.packs||[])).catch(()=>{}); },[]);
+  return (
+    <div className="p-4">
+      {!open ? <div className="grid gap-2">
+        {packs.map(p=> <button key={p.id} className="border rounded-xl p-3 text-left" onClick={async()=>{setOpen(true); const d=await fetch(p.file).then(r=>r.json()); setUnits(d.units||[]);}}>
+          <div className="font-semibold">{p.title}</div><div className="text-sm opacity-70">{p.description}</div>
+        </button>)}
+        {packs.length===0 && <div className="text-sm opacity-70">Ładuję…</div>}
+      </div> : <div className="grid gap-3">
+        <button className="px-3 py-1 rounded-lg border w-fit" onClick={()=>{setOpen(false);setUnits([])}}>← Wróć</button>
+        {units.map((u,i)=><div key={i} className="p-3 border rounded-xl">
+          <div className="font-semibold">/{u.phoneme}/ — {u.letter}</div>
+          <div className="text-sm opacity-70">{u.hint_articulation}</div>
+          <div className="text-sm">Przykłady: {u.examples.join(", ")}</div>
+        </div>)}
+      </div>}
+    </div>
+  );}
+TSX
+
+      - name: Scaffold for agent-ux
+        if: steps.role.outputs.role == 'agent-ux'
+        run: |
+          mkdir -p src
+          if [ -f src/index.css ]; then
+            echo "/* prefers-reduced-motion */ @media (prefers-reduced-motion: reduce){ *{animation:none!important;transition:none!important} }" >> src/index.css
+          else
+            echo "/* prefers-reduced-motion */ @media (prefers-reduced-motion: reduce){ *{animation:none!important;transition:none!important} }" > src/index.css
+          fi
+
+      - name: Scaffold for agent-sec
+        if: steps.role.outputs.role == 'agent-sec'
+        run: |
+          # GH Pages nie wspiera serwerowych nagłówków, więc dodamy defensywne meta w index.html
+          if [ -f index.html ]; then
+            sed -i '1h;1!H;$!d; s#</head>#  <meta http-equiv="Content-Security-Policy" content="default-src '\''self'\''; img-src '\''self'\'' data:; media-src '\''self'\''; script-src '\''self'\''; style-src '\''self'\'' '\''unsafe-inline'\''">\n  <meta http-equiv="Permissions-Policy" content="microphone=() camera=() geolocation=()">\n</head>#' index.html || true
+          fi
+          mkdir -p docs
+          cat > docs/security-notes.md <<'MD'
+# Security notes (GH Pages)
+- CSP/metatagi dodane do `index.html` (ograniczone przez statyczny hosting).
+- Unikamy `<script>` z CDN. 
+- Dalsze wzmocnienia przy migracji na serwer z nagłówkami.
+MD
+
+      - name: Scaffold for agent-cur
+        if: steps.role.outputs.role == 'agent-cur'
+        run: |
+          mkdir -p content
+          cat > content/lekcja-samogloski-dlugie.md <<'MD'
+# Samogłoski długie – instrukcja
+- Ułożenie: iː (usta rozciągnięte, język przód-wysoko), eː, aː, oː, uː, yː, øː.
+- Cel: kontrola długości, brak dyftongowania, stabilna barwa.
+MD
+
+      - name: Commit scaffold
+        run: |
+          git config user.name "agent-factory-bot"
+          git config user.email "agent-factory-bot@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(${ { steps.role.outputs.role } }): scaffold for issue #${{ github.event.issue.number }} — ${ { github.event.issue.title } }" || echo "No changes"
+          git push --set-upstream origin "${{ steps.branch.outputs.branch }}"
+
+      - name: Open draft PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const head = "${{ steps.branch.outputs.branch }}";
+            const base = "main";
+            const title = "[AUTO] " + context.payload.issue.title;
+            const body = `Automatyczny szkic PR dla #${context.payload.issue.number}\n\n- Gałąź: \`${head}\`\n- Rola: \`${{ steps.role.outputs.role }}\`\n\n> Edytuj pliki według potrzeb. CI dołączy artefakt z buildem do podglądu.`;
+            const pr = await github.rest.pulls.create({ owner, repo, head, base, title, body, draft: true });
+            await github.rest.issues.createComment({ owner, repo, issue_number: context.payload.issue.number, body: `Draft PR otwarty: #${pr.data.number}` });

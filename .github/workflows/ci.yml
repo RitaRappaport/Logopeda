@@ -26,3 +26,13 @@ jobs:
         run: npm run test -- --run --coverage || true
       - name: Build
         run: npm run build
+      - name: Build
+        run: npm run build
+
+      - name: Upload build artifact (dist)
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+          if-no-files-found: warn
