@@ -98,7 +98,7 @@ export default function AudioOverlay() {
       };
       requestAnimationFrame(draw);
     });
-    return () => { /* no-op cleanup demo */ };
+    return () => {};
   }, []);
 
   return (
@@ -163,7 +163,6 @@ TSX
       - name: Scaffold for agent-sec
         if: steps.role.outputs.role == 'agent-sec'
         run: |
-          # GH Pages nie wspiera serwerowych nagłówków, więc dodamy defensywne meta w index.html
           if [ -f index.html ]; then
             sed -i '1h;1!H;$!d; s#</head>#  <meta http-equiv="Content-Security-Policy" content="default-src '\''self'\''; img-src '\''self'\'' data:; media-src '\''self'\''; script-src '\''self'\''; style-src '\''self'\'' '\''unsafe-inline'\''">\n  <meta http-equiv="Permissions-Policy" content="microphone=() camera=() geolocation=()">\n</head>#' index.html || true
           fi
@@ -190,7 +189,7 @@ MD
           git config user.name "agent-factory-bot"
           git config user.email "agent-factory-bot@users.noreply.github.com"
           git add -A
-          git commit -m "feat(${ { steps.role.outputs.role } }): scaffold for issue #${{ github.event.issue.number }} — ${ { github.event.issue.title } }" || echo "No changes"
+          git commit -m "feat(agent): scaffold for issue #${{ github.event.issue.number }} — ${{ github.event.issue.title }}" || echo "No changes"
           git push --set-upstream origin "${{ steps.branch.outputs.branch }}"
 
       - name: Open draft PR
@@ -201,6 +200,6 @@ MD
             const head = "${{ steps.branch.outputs.branch }}";
             const base = "main";
             const title = "[AUTO] " + context.payload.issue.title;
-            const body = `Automatyczny szkic PR dla #${context.payload.issue.number}\n\n- Gałąź: \`${head}\`\n- Rola: \`${{ steps.role.outputs.role }}\`\n\n> Edytuj pliki według potrzeb. CI dołączy artefakt z buildem do podglądu.`;
+            const body = `Automatyczny szkic PR dla #${context.payload.issue.number}\n\n- Gałąź: \`${head}\`\n- Rola: \`${{ steps.role.outputs.role }}\`\n\nPodgląd w artefaktach CI (dist).`;
             const pr = await github.rest.pulls.create({ owner, repo, head, base, title, body, draft: true });
             await github.rest.issues.createComment({ owner, repo, issue_number: context.payload.issue.number, body: `Draft PR otwarty: #${pr.data.number}` });

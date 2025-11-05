@@ -18,8 +18,7 @@ jobs:
   handoff:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Create tasks folder
         run: mkdir -p tasks
@@ -47,4 +46,4 @@ jobs:
           git push
 
       - name: Echo status
-        run: echo " Handoff zapisany jako ${{ steps.save.outputs.file }}"
+        run: echo "✅ Handoff zapisany jako ${{ steps.save.outputs.file }}"
