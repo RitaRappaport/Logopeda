@@ -4,6 +4,7 @@ on:
   push:
     branches: [ "main" ]
   pull_request:
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -26,7 +27,6 @@ jobs:
       - name: Build (tolerant)
         run: |
           npm run build --if-present || true
-          # jeśli projekt używa Vite a nie ma skryptu - awaryjnie:
           if [ ! -d dist ]; then npx vite build || true; fi
 
       - name: Upload build artifact (dist)
