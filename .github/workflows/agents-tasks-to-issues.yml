@@ -45,3 +45,6 @@ jobs:
               });
             }
             core.summary.addHeading('Created issues').addList(lines).write();
+[Audio Coach] Overlay fali i pitch porównawczy native vs user
+
+[Exercise Builder] Zestaw ü/ö/ä + dyftongi (a͡ɪ, a͡ʊ, ɔ͡ʏ)
