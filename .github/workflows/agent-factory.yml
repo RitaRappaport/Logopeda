@@ -20,28 +20,32 @@ jobs:
           persist-credentials: true
           fetch-depth: 0
 
-      - name: Derive role from title prefix
+      - name: Derive role from title prefix (safe)
         id: role
         shell: bash
+        env:
+          TITLE: ${{ github.event.issue.title }}
         run: |
-          set -e
-          TITLE="${{ github.event.issue.title }}"
-          LOW=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]')
+          set -euo pipefail
+          LOW=$(printf '%s' "$TITLE" | tr '[:upper:]' '[:lower:]')
           ROLE="generic"
-          [[ "$LOW" =~ audio\ coach ]] && ROLE="agent-audio"
-          [[ "$LOW" =~ exercise\ builder ]] && ROLE="agent-ex"
-          [[ "$LOW" =~ ux\ guard ]] && ROLE="agent-ux"
-          [[ "$LOW" =~ security ]] && ROLE="agent-sec"
-          [[ "$LOW" =~ content\ curator ]] && ROLE="agent-cur"
+          case "$LOW" in
+            *"audio coach"*) ROLE="agent-audio" ;;
+            *"exercise builder"*) ROLE="agent-ex" ;;
+            *"ux guard"*) ROLE="agent-ux" ;;
+            *"security"*) ROLE="agent-sec" ;;
+            *"content curator"*) ROLE="agent-cur" ;;
+          esac
           echo "role=$ROLE" >> "$GITHUB_OUTPUT"
 
       - name: Create feature branch
         id: branch
         shell: bash
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
-          set -e
-          NUM=${{ github.event.issue.number }}
-          BR="feature/auto/issue-$NUM"
+          set -euo pipefail
+          BR="feature/auto/issue-${ISSUE_NUMBER}"
           git config user.name "agent-factory-bot"
           git config user.email "agent-factory-bot@users.noreply.github.com"
           git checkout -b "$BR"
@@ -51,7 +55,7 @@ jobs:
         if: steps.role.outputs.role == 'agent-audio'
         shell: bash
         run: |
-          set -e
+          set -euo pipefail
           mkdir -p src/lib/audio src/components
           cat > src/lib/audio/simplePitch.ts <<'TS'
 export function estimatePitch(samples: Float32Array, sampleRate: number): number {
@@ -111,7 +115,7 @@ TSX
         if: steps.role.outputs.role == 'agent-ex'
         shell: bash
         run: |
-          set -e
+          set -euo pipefail
           mkdir -p public/content/exercises src/components
           if [ ! -f public/content/exercises/index.json ]; then
             cat > public/content/exercises/index.json <<'JSON'
@@ -126,24 +130,31 @@ JSON
 
       - name: Commit & push branch
         shell: bash
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
         run: |
-          set -e
+          set -euo pipefail
           git add -A
-          git commit -m "feat(agent): scaffold for issue #${{ github.event.issue.number }} — ${{ github.event.issue.title }}" || echo "No changes"
+          git commit -m "feat(agent): scaffold for issue #${ISSUE_NUMBER} — ${ISSUE_TITLE}" || echo "No changes"
           git push --set-upstream origin "${{ steps.branch.outputs.branch }}"
 
       - name: Open draft PR
         uses: actions/github-script@v7
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ROLE: ${{ steps.role.outputs.role }}
+          BRANCH: ${{ steps.branch.outputs.branch }}
         with:
           script: |
             const { owner, repo } = context.repo;
-            const head = "${{ steps.branch.outputs.branch }}";
+            const head = process.env.BRANCH;
             const base = "main";
-            const title = "[AUTO] " + context.payload.issue.title;
-            const body = `Automatyczny szkic PR dla #${context.payload.issue.number}
+            const title = `[AUTO] ${context.payload.issue.title}`;
+            const body = `Automatyczny szkic PR dla #${process.env.ISSUE_NUMBER}
 - Gałąź: \`${head}\`
-- Rola: \`${{ steps.role.outputs.role }}\`
+- Rola: \`${process.env.ROLE}\`
 
 Podgląd znajdziesz w artefaktach CI (dist).`;
             const pr = await github.rest.pulls.create({ owner, repo, head, base, title, body, draft: true });
-            await github.rest.issues.createComment({ owner, repo, issue_number: context.payload.issue.number, body: `Draft PR otwarty: #${pr.data.number}` });
+            await github.rest.issues.createComment({ owner, repo, issue_number: Number(process.env.ISSUE_NUMBER), body: `Draft PR otwarty: #${pr.data.number}` });
