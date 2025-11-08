@@ -1,4 +1,6 @@
 ﻿name: Cloud Agents - Nightly (manual)
+permissions:
+  contents: read
 
 on:
   workflow_dispatch:
