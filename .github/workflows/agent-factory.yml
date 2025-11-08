@@ -1,13 +1,13 @@
-name: Agent Factory (issue → branch → scaffold → draft PR)
+name: Agent Factory
 
 on:
   issues:
-    types: [opened, labeled]
+    types: [opened, labeled, edited, reopened]
 
 permissions:
   contents: write
-  pull-requests: write
   issues: write
+  pull-requests: write
 
 jobs:
   factory:
