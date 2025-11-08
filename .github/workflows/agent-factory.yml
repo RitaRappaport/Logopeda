@@ -16,17 +16,7 @@ permissions:
 
 jobs:
   factory:
-    # Działa gdy:
-    # - to event 'issues' i issue MA etykietę 'agent-task'
-    # - lub odpalone ręcznie (workflow_dispatch)
-    if: >
-      (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'agent-task'))
-      || (github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
-
-    env:
-      # Numer issue: z eventu 'issues' lub z inputu workflow_dispatch
-      ISSUE_NUMBER: ${{ github.event_name == 'issues' && github.event.issue.number || inputs.issue }}
 
     steps:
       - name: Checkout
@@ -35,26 +25,40 @@ jobs:
           persist-credentials: true
           fetch-depth: 0
 
+      - name: Determine issue number (manual or issues event)
+        id: which
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "num=${{ github.event.inputs.issue }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "num=${{ github.event.issue.number }}" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Issue #: $(cat $GITHUB_OUTPUT)"
+
       - name: Load issue data (title, labels)
         id: load
         uses: actions/github-script@v7
         with:
           script: |
             const { owner, repo } = context.repo;
-            const issue_number = Number(process.env.ISSUE_NUMBER);
+            const issue_number = Number("${{ steps.which.outputs.num }}");
             const { data: issue } = await github.rest.issues.get({ owner, repo, issue_number });
             core.setOutput('title', issue.title);
             core.setOutput('labels', issue.labels.map(l => typeof l === 'string' ? l : l.name).join(','));
+            core.setOutput('number', issue.number.toString());
+
       - name: Guard: require agent-task label
-        if: github.event_name == 'workflow_dispatch'
+        shell: bash
         run: |
           echo "Labels: ${{ steps.load.outputs.labels }}"
           echo "${{ steps.load.outputs.labels }}" | grep -qi "\bagent-task\b" || {
-            echo "Issue #${ISSUE_NUMBER} nie ma etykiety 'agent-task' – przerwanie.";
+            echo "Issue #${{ steps.load.outputs.number }} nie ma etykiety 'agent-task' – zatrzymanie (no-op).";
             exit 1;
           }
 
-      - name: Derive role from title prefix (safe)
+      - name: Derive role from title (safe)
         id: role
         shell: bash
         env:
@@ -71,23 +75,25 @@ jobs:
             *"content curator"*) ROLE="agent-cur" ;;
           esac
           echo "role=$ROLE" >> "$GITHUB_OUTPUT"
+          echo "ROLE=$ROLE"
 
-      - name: Create feature branch
+      - name: Create or switch feature branch
         id: branch
         shell: bash
+        env:
+          ISSUE_NUMBER: ${{ steps.load.outputs.number }}
         run: |
           set -euo pipefail
           BR="feature/auto/issue-${ISSUE_NUMBER}"
           git config user.name "agent-factory-bot"
           git config user.email "agent-factory-bot@users.noreply.github.com"
-          # utwórz lub przełącz (jeśli już istnieje po wcześniejszym runie)
           git checkout -B "$BR"
           echo "branch=$BR" >> "$GITHUB_OUTPUT"
 
-      # === SCAFFOLDS ===
+      # ---------- SCAFFOLDS ----------
 
       - name: Scaffold (agent-audio)
-        if: steps.role.outputs.role == 'agent-audio'
+        if: ${{ steps.role.outputs.role == 'agent-audio' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -122,7 +128,6 @@ export default function AudioOverlay() {
       const src = ctx.createMediaStreamSource(stream); src.connect(analyser);
       const buf = new Float32Array(analyser.fftSize);
       const draw = () => {
-        // TS typy WebAudio bywają różne w DOM lib – rzutujemy bezpiecznie:
         (analyser as any).getFloatTimeDomainData(buf as Float32Array);
         const pitch = Math.floor(estimatePitch(buf, ctx.sampleRate));
         setHz(pitch);
@@ -150,7 +155,7 @@ export default function AudioOverlay() {
 TSX
 
       - name: Scaffold (agent-ex)
-        if: steps.role.outputs.role == 'agent-ex'
+        if: ${{ steps.role.outputs.role == 'agent-ex' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -186,9 +191,10 @@ JSON
 JSON
           fi
 
-      - name: Commit & push branch
+      - name: Commit & push
         shell: bash
         env:
+          ISSUE_NUMBER: ${{ steps.load.outputs.number }}
           ISSUE_TITLE: ${{ steps.load.outputs.title }}
         run: |
           set -euo pipefail
@@ -203,12 +209,13 @@ JSON
             const { owner, repo } = context.repo;
             const head = "${{ steps.branch.outputs.branch }}";
             const base = "main";
-            const issue_number = Number(process.env.ISSUE_NUMBER);
+            const issue_number = Number("${{ steps.load.outputs.number }}");
             const { data: issue } = await github.rest.issues.get({ owner, repo, issue_number });
+            const role = "${{ steps.role.outputs.role }}";
             const title = `[AUTO] ${issue.title}`;
             const body = `Automatyczny szkic PR dla #${issue_number}
 - Gałąź: \`${head}\`
-- Rola: \`${{ steps.role.outputs.role }}\`
+- Rola: \`${role}\`
 
 Podgląd znajdziesz w artefaktach CI (dist).`;
             const pr = await github.rest.pulls.create({ owner, repo, head, base, title, body, draft: true });
