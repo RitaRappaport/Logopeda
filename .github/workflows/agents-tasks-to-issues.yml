@@ -22,17 +22,19 @@ jobs:
         with:
           script: |
             const fs = require('fs');
+            const wanted = core.getInput('section') || '';
             const raw = fs.readFileSync('agents-tasks.md','utf8');
-            const wanted = core.getInput('section');
-            const sections = raw.split(/^## /m);
+            // jeśli podano sekcję, ogranicz zakres
             let scope = raw;
-            if (wanted) {
-              const sec = sections.find(s => s.trim().startsWith(wanted));
+            if (wanted.trim()) {
+              const parts = raw.split(/^##\s+/m);
+              const sec = parts.find(p => p.trim().startsWith(wanted.trim()));
               if (sec) scope = sec;
             }
             const lines = scope.split(/\r?\n/).filter(l => l.trim().startsWith('- [ ]'));
             if (!lines.length) {
-              core.info('No unchecked tasks found in scope.'); return;
+              core.notice('No unchecked tasks found in scope.');
+              return;
             }
             for (const line of lines) {
               const title = line.replace(/^- \[ \] /,'').trim();
@@ -41,10 +43,8 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 title,
-                labels: ['agent-task','todo']
+                labels: ['agent-task','todo'],
+                body: 'Automatycznie utworzone z agents-tasks.md'
               });
             }
             core.summary.addHeading('Created issues').addList(lines).write();
-[Audio Coach] Overlay fali i pitch porównawczy native vs user
-
-[Exercise Builder] Zestaw ü/ö/ä + dyftongi (a͡ɪ, a͡ʊ, ɔ͡ʏ)
