@@ -1,18 +1,33 @@
-name: Agent Factory (issue → branch → scaffold → draft PR)
+name: Agent Factory
 
 on:
   issues:
-    types: [opened, labeled]
+    types: [opened, labeled, edited, reopened]
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: "Issue number (manual run)"
+        required: true
 
 permissions:
   contents: write
-  pull-requests: write
   issues: write
+  pull-requests: write
 
 jobs:
   factory:
-    if: contains(github.event.issue.labels.*.name, 'agent-task')
+    # Działa gdy:
+    # - to event 'issues' i issue MA etykietę 'agent-task'
+    # - lub odpalone ręcznie (workflow_dispatch)
+    if: >
+      (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'agent-task'))
+      || (github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
+
+    env:
+      # Numer issue: z eventu 'issues' lub z inputu workflow_dispatch
+      ISSUE_NUMBER: ${{ github.event_name == 'issues' && github.event.issue.number || inputs.issue }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,11 +35,30 @@ jobs:
           persist-credentials: true
           fetch-depth: 0
 
+      - name: Load issue data (title, labels)
+        id: load
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const issue_number = Number(process.env.ISSUE_NUMBER);
+            const { data: issue } = await github.rest.issues.get({ owner, repo, issue_number });
+            core.setOutput('title', issue.title);
+            core.setOutput('labels', issue.labels.map(l => typeof l === 'string' ? l : l.name).join(','));
+      - name: Guard: require agent-task label
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "Labels: ${{ steps.load.outputs.labels }}"
+          echo "${{ steps.load.outputs.labels }}" | grep -qi "\bagent-task\b" || {
+            echo "Issue #${ISSUE_NUMBER} nie ma etykiety 'agent-task' – przerwanie.";
+            exit 1;
+          }
+
       - name: Derive role from title prefix (safe)
         id: role
         shell: bash
         env:
-          TITLE: ${{ github.event.issue.title }}
+          TITLE: ${{ steps.load.outputs.title }}
         run: |
           set -euo pipefail
           LOW=$(printf '%s' "$TITLE" | tr '[:upper:]' '[:lower:]')
@@ -41,15 +75,16 @@ jobs:
       - name: Create feature branch
         id: branch
         shell: bash
-        env:
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
           set -euo pipefail
           BR="feature/auto/issue-${ISSUE_NUMBER}"
           git config user.name "agent-factory-bot"
           git config user.email "agent-factory-bot@users.noreply.github.com"
-          git checkout -b "$BR"
+          # utwórz lub przełącz (jeśli już istnieje po wcześniejszym runie)
+          git checkout -B "$BR"
           echo "branch=$BR" >> "$GITHUB_OUTPUT"
+
+      # === SCAFFOLDS ===
 
       - name: Scaffold (agent-audio)
         if: steps.role.outputs.role == 'agent-audio'
@@ -80,15 +115,18 @@ export default function AudioOverlay() {
   const canvasRef = useRef<HTMLCanvasElement|null>(null);
   const [hz, setHz] = useState(0);
   useEffect(() => {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const AC = (window as any).AudioContext || (window as any).webkitAudioContext;
+    const ctx = new AC();
     const analyser = ctx.createAnalyser(); analyser.fftSize = 2048;
     navigator.mediaDevices.getUserMedia({audio:true}).then(stream => {
       const src = ctx.createMediaStreamSource(stream); src.connect(analyser);
       const buf = new Float32Array(analyser.fftSize);
       const draw = () => {
-        analyser.getFloatTimeDomainData(buf as any);
-        const pitch = estimatePitch(buf, ctx.sampleRate)|0; setHz(pitch);
-        const c = canvasRef.current; if(!c) return requestAnimationFrame(draw);
+        // TS typy WebAudio bywają różne w DOM lib – rzutujemy bezpiecznie:
+        (analyser as any).getFloatTimeDomainData(buf as Float32Array);
+        const pitch = Math.floor(estimatePitch(buf, ctx.sampleRate));
+        setHz(pitch);
+        const c = canvasRef.current; if(!c){ requestAnimationFrame(draw); return; }
         const g = c.getContext("2d")!; const mid = c.height/2;
         g.clearRect(0,0,c.width,c.height); g.beginPath();
         for(let i=0;i<buf.length;i++){
@@ -119,20 +157,39 @@ TSX
           mkdir -p public/content/exercises src/components
           if [ ! -f public/content/exercises/index.json ]; then
             cat > public/content/exercises/index.json <<'JSON'
-{ "packs": [ { "id":"vowels-long","title":"Samogłoski długie","description":"Zestaw startowy","file":"/content/exercises/vowels-long.json"} ] }
+{
+  "packs": [
+    {
+      "id":"vowels-long",
+      "title":"Samogłoski długie",
+      "description":"Zestaw startowy",
+      "file":"/content/exercises/vowels-long.json"
+    }
+  ]
+}
 JSON
           fi
           if [ ! -f public/content/exercises/vowels-long.json ]; then
             cat > public/content/exercises/vowels-long.json <<'JSON'
-{ "id":"vowels-long","title":"Samogłoski długie","units":[{"phoneme":"iː","letter":"ie/i","examples":["bieten","Lied"],"hint_articulation":"Usta rozciągnięte, język przód-wysoko."}]}
+{
+  "id":"vowels-long",
+  "title":"Samogłoski długie",
+  "units":[
+    {
+      "phoneme":"iː",
+      "letter":"ie / i",
+      "examples":["bieten","Lied"],
+      "hint_articulation":"Usta rozciągnięte, język przód-wysoko."
+    }
+  ]
+}
 JSON
           fi
 
       - name: Commit & push branch
         shell: bash
         env:
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_TITLE: ${{ steps.load.outputs.title }}
         run: |
           set -euo pipefail
           git add -A
@@ -141,20 +198,18 @@ JSON
 
       - name: Open draft PR
         uses: actions/github-script@v7
-        env:
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-          ROLE: ${{ steps.role.outputs.role }}
-          BRANCH: ${{ steps.branch.outputs.branch }}
         with:
           script: |
             const { owner, repo } = context.repo;
-            const head = process.env.BRANCH;
+            const head = "${{ steps.branch.outputs.branch }}";
             const base = "main";
-            const title = `[AUTO] ${context.payload.issue.title}`;
-            const body = `Automatyczny szkic PR dla #${process.env.ISSUE_NUMBER}
+            const issue_number = Number(process.env.ISSUE_NUMBER);
+            const { data: issue } = await github.rest.issues.get({ owner, repo, issue_number });
+            const title = `[AUTO] ${issue.title}`;
+            const body = `Automatyczny szkic PR dla #${issue_number}
 - Gałąź: \`${head}\`
-- Rola: \`${process.env.ROLE}\`
+- Rola: \`${{ steps.role.outputs.role }}\`
 
 Podgląd znajdziesz w artefaktach CI (dist).`;
             const pr = await github.rest.pulls.create({ owner, repo, head, base, title, body, draft: true });
-            await github.rest.issues.createComment({ owner, repo, issue_number: Number(process.env.ISSUE_NUMBER), body: `Draft PR otwarty: #${pr.data.number}` });
+            await github.rest.issues.createComment({ owner, repo, issue_number, body: `Draft PR otwarty: #${pr.data.number}` });
