@@ -1,4 +1,6 @@
 name: Cloud Agents - Async Tasks
+permissions:
+  contents: read
 on:
   schedule:
     - cron: '0 23 * * *'   # uruchom codziennie o 23:00
