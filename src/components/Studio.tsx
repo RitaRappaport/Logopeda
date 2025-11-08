@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Mic, Square, Play, Upload, Save, Star } from 'lucide-react'
 import { useAppStore } from '../state/store'
