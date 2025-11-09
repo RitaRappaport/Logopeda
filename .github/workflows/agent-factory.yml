@@ -4,23 +4,28 @@ on:
   issues:
     types: [opened, labeled, edited, reopened]
 
+# 🔐 MUSI mieć contents: write – inaczej push gałęzi się nie uda
 permissions:
-  contents: read
+  contents: write
   issues: write
   pull-requests: write
 
+concurrency:
+  group: agent-factory-${{ github.event.issue.number || github.run_id }}
+  cancel-in-progress: false
+
 jobs:
   factory:
-    # działa tylko, gdy issue ma etykietę agent-task
-    if: contains(join(github.event.issue.labels.*.name, ','), 'agent-task')
+    # wykonuj tylko dla zgłoszeń oznaczonych 'agent-task'
+    if: contains(github.event.issue.labels.*.name, 'agent-task')
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          persist-credentials: true
           fetch-depth: 0
+          persist-credentials: true  # użyj GITHUB_TOKEN do pushy
 
       - name: Derive role from title (safe)
         id: role
@@ -48,47 +53,116 @@ jobs:
         run: |
           set -euo pipefail
           br="feature/auto/issue-${ISSUE_NUMBER}"
-          git config user.name "agent-factory-bot"
+          git config user.name  "agent-factory-bot"
           git config user.email "agent-factory-bot@users.noreply.github.com"
-          git checkout -b "$br"
+          # jeśli już istnieje – przełącz; jeśli nie – utwórz
+          if git rev-parse --verify "$br" >/dev/null 2>&1; then
+            git checkout "$br"
+          else
+            git checkout -b "$br"
+          fi
           echo "branch=$br" >> "$GITHUB_OUTPUT"
 
-      - name: Drop role marker file (scaffold stub)
+      # ── Scaffoldy per rola ──────────────────────────────────────────────
+
+      - name: Scaffold (agent-audio)
+        if: steps.role.outputs.role == 'agent-audio'
         shell: bash
-        env:
-          ROLE: ${{ steps.role.outputs.role }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-          ISSUE_TITLE: ${{ github.event.issue.title }}
         run: |
           set -euo pipefail
-          mkdir -p agents/scaffold
-          cat > "agents/scaffold/${ROLE}-issue-${ISSUE_NUMBER}.md" <<EOF
-# Agent scaffold
+          mkdir -p src/lib/audio src/components
+          cat > src/lib/audio/simplePitch.ts <<'TS'
+export function estimatePitch(samples: Float32Array, sampleRate: number): number {
+  const N = samples.length;
+  const w = new Float32Array(N);
+  for (let i=0; i<N; i++) w[i] = samples[i] * (0.54 - 0.46 * Math.cos((2*Math.PI*i)/(N-1)));
+  const minF=70, maxF=450;
+  const minLag = Math.floor(sampleRate/maxF);
+  const maxLag = Math.floor(sampleRate/minF);
+  let bestLag=0, bestR=0;
+  for (let lag=minLag; lag<=Math.min(maxLag, N-1); lag++){
+    let r=0; for (let i=0;i<N-lag;i++) r += w[i]*w[i+lag];
+    if (r>bestR){bestR=r;bestLag=lag;}
+  }
+  return bestLag ? sampleRate/bestLag : 0;
+}
+TS
+          cat > src/components/AudioOverlay.tsx <<'TSX'
+import React, { useEffect, useRef, useState } from "react";
+import { estimatePitch } from "../lib/audio/simplePitch";
+export default function AudioOverlay() {
+  const canvasRef = useRef<HTMLCanvasElement|null>(null);
+  const [hz, setHz] = useState(0);
+  useEffect(() => {
+    const Ctor = (window as any).AudioContext || (window as any).webkitAudioContext;
+    const ctx = new Ctor();
+    const analyser = ctx.createAnalyser(); analyser.fftSize = 2048;
+    navigator.mediaDevices.getUserMedia({audio:true}).then(stream => {
+      const src = ctx.createMediaStreamSource(stream); src.connect(analyser);
+      const buf = new Float32Array(analyser.fftSize);
+      const draw = () => {
+        analyser.getFloatTimeDomainData(buf as any);
+        const pitch = estimatePitch(buf, ctx.sampleRate)|0; setHz(pitch);
+        const c = canvasRef.current; if(!c) return requestAnimationFrame(draw);
+        const g = c.getContext("2d")!; const mid = c.height/2;
+        g.clearRect(0,0,c.width,c.height); g.beginPath();
+        for(let i=0;i<buf.length;i++){
+          const x = i*c.width/buf.length; const y = mid + buf[i]*mid*0.9;
+          i===0? g.moveTo(x,y): g.lineTo(x,y);
+        }
+        g.lineWidth = 2; g.stroke();
+        requestAnimationFrame(draw);
+      };
+      requestAnimationFrame(draw);
+    });
+  }, []);
+  return (
+    <div className="p-4 rounded-2xl border">
+      <div className="mb-2 text-sm opacity-70">Overlay fali + pitch (demo)</div>
+      <canvas ref={canvasRef} width={600} height={160} className="w-full border rounded-lg" />
+      <div className="mt-2 text-sm">Pitch (Hz): <b>{hz}</b></div>
+    </div>
+  );
+}
+TSX
 
-- Role: ${ROLE}
-- Issue: #${ISSUE_NUMBER}
-- Title: ${ISSUE_TITLE}
+      - name: Scaffold (agent-ex)
+        if: steps.role.outputs.role == 'agent-ex'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p public/content/exercises src/components
+          if [ ! -f public/content/exercises/index.json ]; then
+            cat > public/content/exercises/index.json <<'JSON'
+{ "packs": [ { "id":"vowels-long","title":"Samogłoski długie","description":"Zestaw startowy","file":"/content/exercises/vowels-long.json"} ] }
+JSON
+          fi
+          if [ ! -f public/content/exercises/vowels-long.json ]; then
+            cat > public/content/exercises/vowels-long.json <<'JSON'
+{ "id":"vowels-long","title":"Samogłoski długie","units":[{"phoneme":"iː","letter":"ie/i","examples":["bieten","Lied"],"hint_articulation":"Usta rozciągnięte, język przód-wysoko."}]}
+JSON
+          fi
 
-This is an initial marker file created by Agent Factory.
-EOF
+      # ── Commit + push + PR ─────────────────────────────────────────────
 
-      - name: Commit & push
+      - name: Commit & push branch
         shell: bash
         env:
-          BRANCH: ${{ steps.branch.outputs.branch }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           ISSUE_TITLE: ${{ github.event.issue.title }}
+          BRANCH: ${{ steps.branch.outputs.branch }}
         run: |
           set -euo pipefail
           git add -A
-          git commit -m "chore(agent-factory): scaffold for issue #${ISSUE_NUMBER} — ${ISSUE_TITLE}" || echo "No changes"
+          git commit -m "feat(agent): scaffold for issue #${ISSUE_NUMBER} — ${ISSUE_TITLE}" || echo "No changes"
           git push --set-upstream origin "$BRANCH"
 
       - name: Open draft PR
         uses: actions/github-script@v7
         env:
-          BRANCH: ${{ steps.branch.outputs.branch }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ROLE: ${{ steps.role.outputs.role }}
+          BRANCH: ${{ steps.branch.outputs.branch }}
         with:
           script: |
             const { owner, repo } = context.repo;
@@ -97,10 +171,6 @@ EOF
             const title = `[AUTO] ${context.payload.issue.title}`;
             const body = `Automatyczny szkic PR dla #${process.env.ISSUE_NUMBER}
 - Gałąź: \`${head}\`
-- Podstawowy scaffold dodany w \`agents/scaffold\`.`;
+- Rola: \`${process.env.ROLE}\``;
             const pr = await github.rest.pulls.create({ owner, repo, head, base, title, body, draft: true });
-            await github.rest.issues.createComment({
-              owner, repo,
-              issue_number: Number(process.env.ISSUE_NUMBER),
-              body: `Draft PR otwarty: #${pr.data.number}`
-            });
+            await github.rest.issues.createComment({ owner, repo, issue_number: Number(process.env.ISSUE_NUMBER), body: `Draft PR otwarty: #${pr.data.number}` });
