@@ -63,8 +63,9 @@ export default function Studio() {
   const micPitchRef = useRef<HTMLCanvasElement>(null)
   const micPitchSmoothed = useRef(-1)
 
-  // WZORZEC (native) — wgrywany plik i analiza
-  const [refFileUrl, setRefFileUrl] = useState<string | null>(null)
+  // WZORZEC (native) — bezpieczna obsługa pliku
+  const refFileObjUrlRef = useRef<string | null>(null)
+  const [refFile, setRefFile] = useState<File | null>(null)
   const audioElRef = useRef<HTMLAudioElement>(null)
   const refCtxRef = useRef<AudioContext | null>(null)
   const refAnalyserRef = useRef<AnalyserNode | null>(null)
@@ -109,7 +110,6 @@ export default function Studio() {
 
   async function startRec() {
     setRecordUrl(null) // czyść poprzednie
-
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
     mediaStreamRef.current = stream
 
@@ -121,7 +121,6 @@ export default function Studio() {
     const src = ctx.createMediaStreamSource(stream)
     src.connect(analyser)
 
-    // MediaRecorder
     const mr = new MediaRecorder(stream)
     mediaRecRef.current = mr
     micChunksRef.current = []
@@ -142,7 +141,6 @@ export default function Studio() {
     const analyser = micAnalyserRef.current
     if (!analyser || !micCtxRef.current || !micWaveRef.current || !micPitchRef.current) return
 
-    // LOKALNY bufor = brak konfliktów typów
     const buf = new Float32Array(analyser.fftSize)
     analyser.getFloatTimeDomainData(buf)
 
@@ -152,7 +150,6 @@ export default function Studio() {
     micPitchSmoothed.current = smooth(micPitchSmoothed.current, pitch, 0.35)
     drawPitch(micPitchRef.current, micPitchSmoothed.current, TARGETS[refWord], '#1c7ed6')
 
-    // zgodność jeśli mamy też wzorzec
     if (refPitchSmoothed.current > 0 && micPitchSmoothed.current > 0) {
       const [lo, hi] = TARGETS[refWord]
       const center = (lo + hi) / 2
@@ -196,11 +193,37 @@ export default function Studio() {
     } catch {}
   }
 
-  function onPickRefFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0]
+  // --- BEZPIECZNY wybór pliku wzorcowego
+  const onPickRefFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files && e.target.files[0] ? e.target.files[0] : null
     if (!f) return
-    setRefFileUrl(URL.createObjectURL(f))
-  }
+    if (!f.type || !f.type.startsWith('audio/')) {
+      alert('Wybierz plik dźwiękowy (audio/*).')
+      e.target.value = ''
+      return
+    }
+    if (refFileObjUrlRef.current) {
+      URL.revokeObjectURL(refFileObjUrlRef.current)
+      refFileObjUrlRef.current = null
+    }
+    setRefFile(f)
+  }, [])
+
+  const refFileUrl = useMemo(() => {
+    if (!refFile) return null
+    const url = URL.createObjectURL(refFile)
+    refFileObjUrlRef.current = url
+    return url
+  }, [refFile])
+
+  useEffect(() => {
+    return () => {
+      if (refFileObjUrlRef.current) {
+        URL.revokeObjectURL(refFileObjUrlRef.current)
+        refFileObjUrlRef.current = null
+      }
+    }
+  }, [])
 
   async function setupRefAnalyser() {
     if (!audioElRef.current) return
