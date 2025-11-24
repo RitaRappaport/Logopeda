@@ -4,7 +4,7 @@ on:
   issues:
     types: [opened, labeled, edited, reopened]
 
-# 🔐 MUSI mieć contents: write – inaczej push gałęzi się nie uda
+# REQUIRED: permissions.contents=write; otherwise pushing the branch will fail
 permissions:
   contents: write
   issues: write
@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   factory:
-    # wykonuj tylko dla zgłoszeń oznaczonych 'agent-task'
+    # run only for issues labeled 'agent-task'
     if: contains(github.event.issue.labels.*.name, 'agent-task')
     runs-on: ubuntu-latest
 
@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          persist-credentials: true  # użyj GITHUB_TOKEN do pushy
+          persist-credentials: true  # use GITHUB_TOKEN for pushes
 
       - name: Derive role from title (safe)
         id: role
@@ -55,7 +55,7 @@ jobs:
           br="feature/auto/issue-${ISSUE_NUMBER}"
           git config user.name  "agent-factory-bot"
           git config user.email "agent-factory-bot@users.noreply.github.com"
-          # jeśli już istnieje – przełącz; jeśli nie – utwórz
+          # if branch exists -> switch; otherwise create it
           if git rev-parse --verify "$br" >/dev/null 2>&1; then
             git checkout "$br"
           else
@@ -63,7 +63,7 @@ jobs:
           fi
           echo "branch=$br" >> "$GITHUB_OUTPUT"
 
-      # ── Scaffoldy per rola ──────────────────────────────────────────────
+      # Scaffold per role
 
       - name: Scaffold (agent-audio)
         if: steps.role.outputs.role == 'agent-audio'
@@ -134,16 +134,16 @@ TSX
           mkdir -p public/content/exercises src/components
           if [ ! -f public/content/exercises/index.json ]; then
             cat > public/content/exercises/index.json <<'JSON'
-{ "packs": [ { "id":"vowels-long","title":"Samogłoski długie","description":"Zestaw startowy","file":"/content/exercises/vowels-long.json"} ] }
+{ "packs": [ { "id":"vowels-long","title":"Samogloski dlugie","description":"Zestaw startowy","file":"/content/exercises/vowels-long.json"} ] }
 JSON
           fi
           if [ ! -f public/content/exercises/vowels-long.json ]; then
             cat > public/content/exercises/vowels-long.json <<'JSON'
-{ "id":"vowels-long","title":"Samogłoski długie","units":[{"phoneme":"iː","letter":"ie/i","examples":["bieten","Lied"],"hint_articulation":"Usta rozciągnięte, język przód-wysoko."}]}
+{ "id":"vowels-long","title":"Samogloski dlugie","units":[{"phoneme":"i:","letter":"ie/i","examples":["bieten","Lied"],"hint_articulation":"Usta rozciagniete, jezyk przod-wysoko."}]}
 JSON
           fi
 
-      # ── Commit + push + PR ─────────────────────────────────────────────
+      # Commit + push + PR
 
       - name: Commit & push branch
         shell: bash
@@ -154,7 +154,7 @@ JSON
         run: |
           set -euo pipefail
           git add -A
-          git commit -m "feat(agent): scaffold for issue #${ISSUE_NUMBER} — ${ISSUE_TITLE}" || echo "No changes"
+          git commit -m "feat(agent): scaffold for issue #${ISSUE_NUMBER} ${ISSUE_TITLE}" || echo "No changes"
           git push --set-upstream origin "$BRANCH"
 
       - name: Open draft PR
@@ -170,7 +170,7 @@ JSON
             const base = "main";
             const title = `[AUTO] ${context.payload.issue.title}`;
             const body = `Automatyczny szkic PR dla #${process.env.ISSUE_NUMBER}
-- Gałąź: \`${head}\`
+- Branch: \`${head}\`
 - Rola: \`${process.env.ROLE}\``;
             const pr = await github.rest.pulls.create({ owner, repo, head, base, title, body, draft: true });
             await github.rest.issues.createComment({ owner, repo, issue_number: Number(process.env.ISSUE_NUMBER), body: `Draft PR otwarty: #${pr.data.number}` });
