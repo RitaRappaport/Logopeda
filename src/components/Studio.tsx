@@ -52,7 +52,9 @@ function autoCorrelate(buf: Float32Array, sampleRate: number) {
 const smooth = (prev: number, next: number, alpha = 0.3) => (prev < 0 ? next : prev * (1 - alpha) + next * alpha)
 
 type TargetBand = [number, number]
-type WebAudioContext = AudioContext | (Window['AudioContext'] & typeof window.AudioContext)
+type WebAudioContext = AudioContext | (Window['AudioContext'] & {
+  webkitAudioContext?: typeof AudioContext
+})
 
 export default function Studio() {
   useTranslation()
@@ -166,8 +168,9 @@ export default function Studio() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       mediaStreamRef.current = stream
 
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
-      const ctx = new AudioContextClass() as WebAudioContext
+      const AudioContextClass = (window as { AudioContext: typeof AudioContext; webkitAudioContext?: typeof AudioContext }).AudioContext || 
+                                (window as any).webkitAudioContext
+      const ctx = new AudioContextClass() as AudioContext
       micCtxRef.current = ctx
       const analyser = ctx.createAnalyser()
       analyser.fftSize = 2048
@@ -257,8 +260,9 @@ export default function Studio() {
   async function setupRefAnalyser() {
     if (!audioElRef.current) return
     refCtxRef.current?.close()
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
-    const ctx = new AudioContextClass() as WebAudioContext
+    const AudioContextClass = (window as { AudioContext: typeof AudioContext; webkitAudioContext?: typeof AudioContext }).AudioContext || 
+                              (window as any).webkitAudioContext
+    const ctx = new AudioContextClass() as AudioContext
     refCtxRef.current = ctx
     const analyser = ctx.createAnalyser()
     analyser.fftSize = 2048
