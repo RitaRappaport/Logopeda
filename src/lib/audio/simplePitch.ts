@@ -1,4 +1,10 @@
-﻿/**
+﻿/// DOCS:
+/// Moduł analizy wysokości tonu (pitch) — wykorzystuje autokorelację.
+/// Funkcja `estimatePitch()` szacuje frekvencję podstawową dla bufora audio.
+/// Zakres: 70–450 Hz (ludzki głos). Zwraca 0 gdy brak tonu poniżej progu RMS.
+/// Użycie: const pitch = estimatePitch(samples, sampleRate);
+
+/**
  * Bardzo lekki szacunek tonu podstawowego (pitch) metodą autokorelacji.
  * Zwraca Hz dla okna ~20ms; gdy brak tonu  0.
  */

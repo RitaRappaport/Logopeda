@@ -1,3 +1,13 @@
+/// DOCS:
+/// Studio — główny moduł nagrywania i analizy użytkownika.
+/// Funkcje:
+/// - Nagrywanie audio z mikrofonu (Web Audio API)
+/// - Analiza pitch (wysokość tonu) w reżymu real-time
+/// - Porównanie z wzorcem (native speaker lub TTS)
+/// - Wizualizacja fali i pitch na canvas
+/// - Zapis sesji do localStorage (score, timestamp, target word)
+/// Bezpieczeństwo: Mikrofon uruchamiany tylko po user click. Brak wysyłania danych.
+
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Mic, Square, Play, Upload, Save, Star } from 'lucide-react'
@@ -265,28 +275,45 @@ export default function Studio() {
   }, [])
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 p-4">
       {/* Sterowanie */}
       <div className="flex flex-wrap items-center gap-2">
-        <select className="border rounded px-2 py-1" value={refWord} onChange={(e) => setRefWord(e.target.value)}>
+        <select
+          className="border rounded px-2 py-1"
+          value={refWord}
+          onChange={(e) => setRefWord(e.target.value)}
+          aria-label="Wybór słowa docelowego"
+        >
           {Object.keys(TARGETS).map(k => <option key={k} value={k}>{k}</option>)}
         </select>
 
-        <button className="px-3 py-2 rounded bg-accent text-white flex items-center gap-2" onClick={() => speak(refWord)}>
+        <button
+          className="px-3 py-2 rounded bg-accent text-white flex items-center gap-2 hover:opacity-90 transition"
+          onClick={() => speak(refWord)}
+          aria-label={`Odtwórz wzorzec: ${refWord}`}
+        >
           <Play className="w-4 h-4" /> Odtwórz wzorzec (TTS)
         </button>
 
         {!isRec ? (
-          <button className="px-3 py-2 rounded border flex items-center gap-2" onClick={startRec}>
+          <button
+            className="px-3 py-2 rounded border flex items-center gap-2 hover:bg-slate-50 transition"
+            onClick={startRec}
+            aria-label="Rozpocznij nagrywanie"
+          >
             <Mic className="w-4 h-4" /> Start nagrywania
           </button>
         ) : (
-          <button className="px-3 py-2 rounded bg-red-500 text-white flex items-center gap-2" onClick={stopRec}>
+          <button
+            className="px-3 py-2 rounded bg-red-500 text-white flex items-center gap-2 hover:opacity-90 transition"
+            onClick={stopRec}
+            aria-label="Zatrzymaj nagrywanie"
+          >
             <Square className="w-4 h-4" /> Stop
           </button>
         )}
 
-        <label className="text-sm ml-2">
+        <label className="text-sm ml-2 flex items-center gap-1">
           Limit (sek):
           <input
             type="number"
@@ -294,36 +321,36 @@ export default function Studio() {
             className="ml-1 w-16 border rounded px-1 py-0.5"
             value={maxSeconds}
             onChange={(e) => setMaxSeconds(Math.max(0, Number(e.target.value)))}
-            title="0 = bez limitu"
+            aria-label="Limit czasu nagrywania w sekundach (0 = bez limitu)"
           />
         </label>
 
         <div className="ml-auto flex items-center gap-2">
-          <Star className="w-4 h-4 text-amber-500" />
-          <span className="font-semibold">Zgodność: {compat}%</span>
+          <Star className="w-4 h-4 text-amber-500" aria-hidden="true" />
+          <span className="font-semibold" aria-live="polite">Zgodność: {compat}%</span>
         </div>
       </div>
 
       {/* Wzorzec (native) */}
       <div className="border rounded p-3">
         <div className="flex items-center gap-2 mb-2">
-          <label className="px-3 py-2 rounded border flex items-center gap-2 cursor-pointer">
+          <label className="px-3 py-2 rounded border flex items-center gap-2 cursor-pointer hover:bg-slate-50 transition">
             <Upload className="w-4 h-4" />
             <span>Wgraj plik wzorcowy (native)</span>
-            <input type="file" accept="audio/*" onChange={onPickRefFile} className="hidden" />
+            <input type="file" accept="audio/*" onChange={onPickRefFile} className="hidden" aria-label="Wybór pliku audio wzorcowego" />
           </label>
           {refFileUrl && (
-            <audio ref={audioElRef} src={refFileUrl} controls onPlay={setupRefAnalyser} className="ml-2" />
+            <audio ref={audioElRef} src={refFileUrl} controls onPlay={setupRefAnalyser} className="ml-2" aria-label="Odtwarzacz wzorca" />
           )}
         </div>
         <div className="grid md:grid-cols-2 gap-3">
           <div>
-            <div className="text-sm text-slate-600 mb-1">Wzorzec — fala</div>
-            <canvas ref={refWaveRef} width={600} height={140} className="w-full border rounded" />
+            <div className="text-sm text-slate-600 mb-1">Wzorzec — fala dźwiękowa</div>
+            <canvas ref={refWaveRef} width={600} height={140} className="w-full border rounded" role="img" aria-label="Wizualizacja fali wzorca" />
           </div>
           <div>
-            <div className="text-sm text-slate-600 mb-1">Wzorzec — pitch / pasmo</div>
-            <canvas ref={refPitchRef} width={600} height={140} className="w-full border rounded" />
+            <div className="text-sm text-slate-600 mb-1">Wzorzec — wysokość tonu (Hz) i pasmo docelowe</div>
+            <canvas ref={refPitchRef} width={600} height={140} className="w-full border rounded" role="img" aria-label="Wizualizacja pitch wzorca" />
           </div>
         </div>
       </div>
@@ -332,28 +359,34 @@ export default function Studio() {
       <div className="border rounded p-3">
         <div className="grid md:grid-cols-2 gap-3">
           <div>
-            <div className="text-sm text-slate-600 mb-1">Użytkownik — fala</div>
-            <canvas ref={micWaveRef} width={600} height={140} className="w-full border rounded" />
+            <div className="text-sm text-slate-600 mb-1">Twoje nagranie — fala dźwiękowa</div>
+            <canvas ref={micWaveRef} width={600} height={140} className="w-full border rounded" role="img" aria-label="Wizualizacja fali Twojego nagrania" />
           </div>
           <div>
-            <div className="text-sm text-slate-600 mb-1">Użytkownik — pitch / pasmo</div>
-            <canvas ref={micPitchRef} width={600} height={140} className="w-full border rounded" />
+            <div className="text-sm text-slate-600 mb-1">Twoje nagranie — wysokość tonu (Hz) i pasmo docelowe</div>
+            <canvas ref={micPitchRef} width={600} height={140} className="w-full border rounded" role="img" aria-label="Wizualizacja pitch Twojego nagrania" />
           </div>
         </div>
 
         <div className="flex items-center justify-between mt-3">
           <div className="text-sm text-slate-600">
-            Po „Stop” pojawi się nagranie do odsłuchu i pobrania.
+            Po „Stop" pojawi się nagranie do odsłuchu i pobrania.
           </div>
-          <button className="px-3 py-2 rounded border flex items-center gap-2" onClick={saveSession}>
+          <button
+            className="px-3 py-2 rounded border flex items-center gap-2 hover:bg-slate-50 transition"
+            onClick={saveSession}
+            aria-label="Zapisz sesję ćwiczenia"
+          >
             <Save className="w-4 h-4" /> Zapisz sesję
           </button>
         </div>
 
         {recordUrl && (
           <div className="mt-2">
-            <audio controls src={recordUrl} className="w-full" />
-            <a className="text-sm underline" href={recordUrl} download={`nagranie-${Date.now()}.webm`}>Pobierz nagranie</a>
+            <audio controls src={recordUrl} className="w-full" aria-label="Odtwarzacz Twojego nagrania" />
+            <a className="text-sm underline text-primary hover:text-accent transition" href={recordUrl} download={`nagranie-${Date.now()}.webm`}>
+              Pobierz nagranie
+            </a>
           </div>
         )}
       </div>

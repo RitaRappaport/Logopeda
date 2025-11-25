@@ -1,19 +1,17 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./index.html', './src/**/*.{ts,tsx}'],
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
-        accent: {
-          DEFAULT: '#1c7ed6', // blue
-          light: '#e7f5ff',
-          alt: '#12b886' // green
-        }
+        accent: '#12b886',      // mięta
+        primary: '#1c7ed6',     // błękit
+        neutral: '#f5f5f5',     // biel/szarość
       },
-      fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui']
-      }
-    }
+      animation: {
+        pulse: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      },
+    },
   },
-  plugins: []
+  plugins: [],
 }
