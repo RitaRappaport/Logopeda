@@ -55,7 +55,7 @@ Nigdy nie commituj żadnych kluczy API do repozytorium.
   - `fix/<nazwa>` — poprawka  
   - `docs/<nazwa>` — dokumentacja  
 - Commity atomowe, logiczne, zwięzłe.
-- Codex (AI-CEO) akceptuje PR po przejściu checklisty:
+- Copilot (AI-CEO) akceptuje PR po przejściu checklisty:
   1. Poprawność kodu  
   2. Bezpieczeństwo  
   3. Spójność stylistyczna  
@@ -75,7 +75,7 @@ Nigdy nie commituj żadnych kluczy API do repozytorium.
 ## 6. Zespół
 
 - **RitaRappaport (Project Lead)**  
-- **Codex (AI-CEO)**  
+- **Copilot (AI-CEO)**  
 - **GPT-5 (System Engineer)**  
 - **Cloud Agents (asynchroniczni koderzy i testerzy)**  
 
