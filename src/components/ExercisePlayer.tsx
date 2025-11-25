@@ -1,132 +1,63 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
-import { estimatePitch } from '../lib/audio/simplePitch';
+﻿/// DOCS:
+/// ExercisePlayer — odtwarzacz ćwiczeń audio z interaktywnym interfejsem.
 
-type Unit = {
-  phoneme: string;
-  letter: string;
-  examples: string[];
-  hint_articulation: string;
-  native_sample?: string;
-};
+import React, { useEffect, useRef, useState } from 'react'
 
-export default function ExercisePlayer({ unit }: { unit: Unit }) {
-  const [recStream, setRecStream] = useState<MediaStream | null>(null);
-  const [recChunks, setRecChunks] = useState<Blob[]>([]);
-  const [recUrl, setRecUrl] = useState<string | null>(null);
-  const mediaRecRef = useRef<MediaRecorder | null>(null);
-  const nativeRef = useRef<HTMLAudioElement | null>(null);
-  const userRef = useRef<HTMLAudioElement | null>(null);
+interface ExercisePlayerProps {
+  audioUrl: string
+  label: string
+}
 
-  // prosta wizualizacja: pitch na żywo, porównanie po odtworzeniu
-  const [nativePitch, setNativePitch] = useState<number>(0);
-  const [userPitch, setUserPitch] = useState<number>(0);
-  const [similarity, setSimilarity] = useState<number>(0);
-
-  // prosta analiza z WebAudio
-  function analyzePitch(el: HTMLAudioElement, set: (v: number) => void) {
-    const ctx = new AudioContext();
-    const src = ctx.createMediaElementSource(el);
-    const analyser = ctx.createAnalyser();
-    analyser.fftSize = 2048;
-    src.connect(analyser);
-    analyser.connect(ctx.destination);
-
-    const buf = new Float32Array(analyser.fftSize);
-    let raf = 0;
-    const tick = () => {
-      analyser.getFloatTimeDomainData(buf);
-      const hz = estimatePitch(buf, ctx.sampleRate);
-      set(hz || 0);
-      raf = requestAnimationFrame(tick);
-    };
-    el.onplay = () => {
-      raf = requestAnimationFrame(tick);
-    };
-    el.onpause = el.onended = () => {
-      cancelAnimationFrame(raf);
-    };
-  }
+export default function ExercisePlayer({
+  audioUrl,
+  label,
+}: ExercisePlayerProps) {
+  const [isPlaying, setIsPlaying] = useState(false)
+  const audioRef = useRef<HTMLAudioElement>(null)
 
   useEffect(() => {
-    if (nativeRef.current) analyzePitch(nativeRef.current, setNativePitch);
-    if (userRef.current) analyzePitch(userRef.current, setUserPitch);
-  }, []);
+    const audio = audioRef.current
+    if (!audio) return
 
-  useEffect(() => {
-    if (!nativePitch || !userPitch) {
-      setSimilarity(0);
-      return;
+    const handlePlay = () => setIsPlaying(true)
+    const handlePause = () => setIsPlaying(false)
+    const handleEnded = () => setIsPlaying(false)
+
+    audio.addEventListener('play', handlePlay)
+    audio.addEventListener('pause', handlePause)
+    audio.addEventListener('ended', handleEnded)
+
+    return () => {
+      audio.removeEventListener('play', handlePlay)
+      audio.removeEventListener('pause', handlePause)
+      audio.removeEventListener('ended', handleEnded)
     }
-    // bardzo prosty wskaźnik zgodności ~ im bliżej, tym lepiej
-    const ratio = Math.min(nativePitch, userPitch) / Math.max(nativePitch, userPitch);
-    setSimilarity(Math.round(ratio * 100));
-  }, [nativePitch, userPitch]);
+  }, [])
 
-  async function startRec() {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    setRecStream(stream);
-    const mr = new MediaRecorder(stream);
-    mediaRecRef.current = mr;
-    const chunks: Blob[] = [];
-    setRecChunks(chunks);
-    mr.ondataavailable = (e) => {
-      if (e.data.size) chunks.push(e.data);
-    };
-    mr.onstop = () => {
-      const blob = new Blob(chunks, { type: 'audio/webm' });
-      const url = URL.createObjectURL(blob);
-      setRecUrl(url);
-    };
-    mr.start();
-  }
-  function stopRec() {
-    mediaRecRef.current?.stop();
-    recStream?.getTracks().forEach((t) => t.stop());
-    setRecStream(null);
+  const togglePlay = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause()
+      } else {
+        audioRef.current.play()
+      }
+    }
   }
 
   return (
-    <div className="p-4 rounded-2xl border border-gray-200">
-      <div className="text-xl font-semibold mb-1">
-        /{unit.phoneme}/ {unit.letter}
+    <div className="flex items-center gap-3 p-4 bg-white rounded-lg border-2 border-slate-200 hover:border-primary transition">
+      <button
+        onClick={togglePlay}
+        className="p-2 bg-primary text-white rounded-full hover:opacity-90 transition"
+        aria-label={isPlaying ? 'Wstrzymaj' : 'Odtwórz'}
+      >
+        {isPlaying ? '⏸️' : '▶️'}
+      </button>
+      <div className="flex-1">
+        <p className="text-sm font-medium text-slate-700">{label}</p>
+        <audio ref={audioRef} src={audioUrl} />
       </div>
-      <div className="text-sm opacity-70 mb-2">{unit.hint_articulation}</div>
-      <div className="text-sm mb-3">
-        <b>Przykłady:</b> {unit.examples.join(', ')}
-      </div>
-
-      <div className="flex gap-4 items-center flex-wrap">
-        {unit.native_sample ? (
-          <>
-            <audio ref={nativeRef} src={unit.native_sample} controls preload="none" />
-            <span className="text-xs">Pitch native: {Math.round(nativePitch)} Hz</span>
-          </>
-        ) : (
-          <div className="text-xs opacity-60">Brak nagrania native (dodamy później)</div>
-        )}
-
-        <div className="flex items-center gap-2">
-          {!recStream ? (
-            <button onClick={startRec} className="px-3 py-1 rounded-lg border">
-              Start
-            </button>
-          ) : (
-            <button onClick={stopRec} className="px-3 py-1 rounded-lg border">
-              Stop
-            </button>
-          )}
-          {recUrl && (
-            <>
-              <audio ref={userRef} src={recUrl} controls />
-              <span className="text-xs">Pitch user: {Math.round(userPitch)} Hz</span>
-            </>
-          )}
-        </div>
-
-        <div className="ml-auto text-sm">
-          Zgodność (pitch): <b>{similarity}%</b>
-        </div>
-      </div>
+      <span className="text-slate-400">🔊</span>
     </div>
-  );
+  )
 }

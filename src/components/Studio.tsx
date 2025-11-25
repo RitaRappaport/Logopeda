@@ -52,19 +52,20 @@ function autoCorrelate(buf: Float32Array, sampleRate: number) {
 const smooth = (prev: number, next: number, alpha = 0.3) => (prev < 0 ? next : prev * (1 - alpha) + next * alpha)
 
 type TargetBand = [number, number]
+type WebAudioContext = AudioContext | (Window['AudioContext'] & typeof window.AudioContext)
 
 export default function Studio() {
-  const { t: _t } = useTranslation()
+  useTranslation()
   const addSession = useAppStore((s) => s.addSession)
 
   const [refWord, setRefWord] = useState('für')
-  const TARGETS: Record<string, TargetBand> = {
+  const TARGETS: Record<string, TargetBand> = useMemo(() => ({
     ich: [200, 320],
     für: [170, 260],
     Bach: [100, 200],
     schön: [170, 240],
     rot: [120, 200],
-  }
+  }), [])
 
   const [isRec, setIsRec] = useState(false)
   const [maxSeconds, setMaxSeconds] = useState(0)
@@ -76,7 +77,7 @@ export default function Studio() {
   const micChunksRef = useRef<Blob[]>([])
   const stopTimerRef = useRef<number | null>(null)
 
-  const micCtxRef = useRef<AudioContext | null>(null)
+  const micCtxRef = useRef<WebAudioContext | null>(null)
   const micAnalyserRef = useRef<AnalyserNode | null>(null)
   const rafMicRef = useRef<number | null>(null)
   const micWaveRef = useRef<HTMLCanvasElement>(null)
@@ -86,7 +87,7 @@ export default function Studio() {
   const refFileObjUrlRef = useRef<string | null>(null)
   const [refFile, setRefFile] = useState<File | null>(null)
   const audioElRef = useRef<HTMLAudioElement>(null)
-  const refCtxRef = useRef<AudioContext | null>(null)
+  const refCtxRef = useRef<WebAudioContext | null>(null)
   const refAnalyserRef = useRef<AnalyserNode | null>(null)
   const rafRefRef = useRef<number | null>(null)
   const refWaveRef = useRef<HTMLCanvasElement>(null)
@@ -157,7 +158,7 @@ export default function Studio() {
     }
 
     rafMicRef.current = requestAnimationFrame(loopMic)
-  }, [refWord])
+  }, [refWord, TARGETS])
 
   async function startRec() {
     setRecordUrl(null)
@@ -165,7 +166,8 @@ export default function Studio() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       mediaStreamRef.current = stream
 
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
+      const ctx = new AudioContextClass() as WebAudioContext
       micCtxRef.current = ctx
       const analyser = ctx.createAnalyser()
       analyser.fftSize = 2048
@@ -255,7 +257,8 @@ export default function Studio() {
   async function setupRefAnalyser() {
     if (!audioElRef.current) return
     refCtxRef.current?.close()
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
+    const ctx = new AudioContextClass() as WebAudioContext
     refCtxRef.current = ctx
     const analyser = ctx.createAnalyser()
     analyser.fftSize = 2048
@@ -279,7 +282,7 @@ export default function Studio() {
     drawPitch(refPitchRef.current, refPitchSmoothed.current, TARGETS[refWord], '#0ea5e9', 'rgba(18,184,134,0.15)')
 
     rafRefRef.current = requestAnimationFrame(loopRef)
-  }, [refWord])
+  }, [refWord, TARGETS])
 
   useEffect(() => {
     return () => {
