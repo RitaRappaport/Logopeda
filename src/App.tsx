@@ -1,10 +1,10 @@
-﻿import React from 'react'
-import Studio from './components/Studio'
-import Exercises from './components/Exercises'
-import Gamification from './components/Gamification'
+﻿import React from 'react';
+import Studio from './components/Studio';
+import Exercises from './components/Exercises';
+import Gamification from './components/Gamification';
 
 export default function App() {
-  const [tab, setTab] = React.useState<'studio' | 'exercises' | 'gamification'>('studio')
+  const [tab, setTab] = React.useState<'studio' | 'exercises' | 'gamification'>('studio');
 
   return (
     <div className="min-h-screen bg-neutral p-4">
@@ -50,5 +50,5 @@ export default function App() {
         <p>„Każdy dźwięk to most między intencją a światem." — DeutschFonetyka</p>
       </footer>
     </div>
-  )
+  );
 }

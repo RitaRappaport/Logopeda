@@ -1,5 +1,5 @@
-﻿import React, { useEffect, useRef, useState } from "react";
-import { estimatePitch } from "../lib/audio/simplePitch";
+﻿import React, { useEffect, useRef, useState } from 'react';
+import { estimatePitch } from '../lib/audio/simplePitch';
 
 type Unit = {
   phoneme: string;
@@ -23,7 +23,7 @@ export default function ExercisePlayer({ unit }: { unit: Unit }) {
   const [similarity, setSimilarity] = useState<number>(0);
 
   // prosta analiza z WebAudio
-  function analyzePitch(el: HTMLAudioElement, set: (v:number)=>void) {
+  function analyzePitch(el: HTMLAudioElement, set: (v: number) => void) {
     const ctx = new AudioContext();
     const src = ctx.createMediaElementSource(el);
     const analyser = ctx.createAnalyser();
@@ -39,8 +39,12 @@ export default function ExercisePlayer({ unit }: { unit: Unit }) {
       set(hz || 0);
       raf = requestAnimationFrame(tick);
     };
-    el.onplay = () => { raf = requestAnimationFrame(tick); };
-    el.onpause = el.onended = () => { cancelAnimationFrame(raf); };
+    el.onplay = () => {
+      raf = requestAnimationFrame(tick);
+    };
+    el.onpause = el.onended = () => {
+      cancelAnimationFrame(raf);
+    };
   }
 
   useEffect(() => {
@@ -49,7 +53,10 @@ export default function ExercisePlayer({ unit }: { unit: Unit }) {
   }, []);
 
   useEffect(() => {
-    if (!nativePitch || !userPitch) { setSimilarity(0); return; }
+    if (!nativePitch || !userPitch) {
+      setSimilarity(0);
+      return;
+    }
     // bardzo prosty wskaźnik zgodności ~ im bliżej, tym lepiej
     const ratio = Math.min(nativePitch, userPitch) / Math.max(nativePitch, userPitch);
     setSimilarity(Math.round(ratio * 100));
@@ -62,9 +69,11 @@ export default function ExercisePlayer({ unit }: { unit: Unit }) {
     mediaRecRef.current = mr;
     const chunks: Blob[] = [];
     setRecChunks(chunks);
-    mr.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+    mr.ondataavailable = (e) => {
+      if (e.data.size) chunks.push(e.data);
+    };
     mr.onstop = () => {
-      const blob = new Blob(chunks, { type: "audio/webm" });
+      const blob = new Blob(chunks, { type: 'audio/webm' });
       const url = URL.createObjectURL(blob);
       setRecUrl(url);
     };
@@ -72,15 +81,19 @@ export default function ExercisePlayer({ unit }: { unit: Unit }) {
   }
   function stopRec() {
     mediaRecRef.current?.stop();
-    recStream?.getTracks().forEach(t => t.stop());
+    recStream?.getTracks().forEach((t) => t.stop());
     setRecStream(null);
   }
 
   return (
     <div className="p-4 rounded-2xl border border-gray-200">
-      <div className="text-xl font-semibold mb-1">/{unit.phoneme}/  {unit.letter}</div>
+      <div className="text-xl font-semibold mb-1">
+        /{unit.phoneme}/ {unit.letter}
+      </div>
       <div className="text-sm opacity-70 mb-2">{unit.hint_articulation}</div>
-      <div className="text-sm mb-3"><b>Przykłady:</b> {unit.examples.join(", ")}</div>
+      <div className="text-sm mb-3">
+        <b>Przykłady:</b> {unit.examples.join(', ')}
+      </div>
 
       <div className="flex gap-4 items-center flex-wrap">
         {unit.native_sample ? (
@@ -88,13 +101,19 @@ export default function ExercisePlayer({ unit }: { unit: Unit }) {
             <audio ref={nativeRef} src={unit.native_sample} controls preload="none" />
             <span className="text-xs">Pitch native: {Math.round(nativePitch)} Hz</span>
           </>
-        ) : <div className="text-xs opacity-60">Brak nagrania native (dodamy później)</div>}
+        ) : (
+          <div className="text-xs opacity-60">Brak nagrania native (dodamy później)</div>
+        )}
 
         <div className="flex items-center gap-2">
           {!recStream ? (
-            <button onClick={startRec} className="px-3 py-1 rounded-lg border">Start</button>
+            <button onClick={startRec} className="px-3 py-1 rounded-lg border">
+              Start
+            </button>
           ) : (
-            <button onClick={stopRec} className="px-3 py-1 rounded-lg border">Stop</button>
+            <button onClick={stopRec} className="px-3 py-1 rounded-lg border">
+              Stop
+            </button>
           )}
           {recUrl && (
             <>

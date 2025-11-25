@@ -1,5 +1,5 @@
-import i18n from 'i18next'
-import { initReactI18next } from 'react-i18next'
+import i18n from 'i18next';
+import { initReactI18next } from 'react-i18next';
 
 const resources = {
   pl: {
@@ -17,7 +17,7 @@ const resources = {
       score: 'Wynik',
       wave: 'Fala',
       pitch_hit: 'Trafienie w pasmo',
-    }
+    },
   },
   de: {
     translation: {
@@ -34,17 +34,15 @@ const resources = {
       score: 'Punkte',
       wave: 'Wellenform',
       pitch_hit: 'Treffer im Zielband',
-    }
-  }
-}
+    },
+  },
+};
 
-i18n
-  .use(initReactI18next)
-  .init({
-    resources,
-    lng: 'pl',
-    fallbackLng: 'pl',
-    interpolation: { escapeValue: false },
-  })
+i18n.use(initReactI18next).init({
+  resources,
+  lng: 'pl',
+  fallbackLng: 'pl',
+  interpolation: { escapeValue: false },
+});
 
-export default i18n
+export default i18n;
