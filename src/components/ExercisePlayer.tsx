@@ -1,48 +1,45 @@
 ﻿/// DOCS:
 /// ExercisePlayer — odtwarzacz ćwiczeń audio z interaktywnym interfejsem.
 
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react';
 
 interface ExercisePlayerProps {
-  audioUrl: string
-  label: string
+  audioUrl: string;
+  label: string;
 }
 
-export default function ExercisePlayer({
-  audioUrl,
-  label,
-}: ExercisePlayerProps) {
-  const [isPlaying, setIsPlaying] = useState(false)
-  const audioRef = useRef<HTMLAudioElement>(null)
+export default function ExercisePlayer({ audioUrl, label }: ExercisePlayerProps) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
-    const audio = audioRef.current
-    if (!audio) return
+    const audio = audioRef.current;
+    if (!audio) return;
 
-    const handlePlay = () => setIsPlaying(true)
-    const handlePause = () => setIsPlaying(false)
-    const handleEnded = () => setIsPlaying(false)
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+    const handleEnded = () => setIsPlaying(false);
 
-    audio.addEventListener('play', handlePlay)
-    audio.addEventListener('pause', handlePause)
-    audio.addEventListener('ended', handleEnded)
+    audio.addEventListener('play', handlePlay);
+    audio.addEventListener('pause', handlePause);
+    audio.addEventListener('ended', handleEnded);
 
     return () => {
-      audio.removeEventListener('play', handlePlay)
-      audio.removeEventListener('pause', handlePause)
-      audio.removeEventListener('ended', handleEnded)
-    }
-  }, [])
+      audio.removeEventListener('play', handlePlay);
+      audio.removeEventListener('pause', handlePause);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, []);
 
   const togglePlay = () => {
     if (audioRef.current) {
       if (isPlaying) {
-        audioRef.current.pause()
+        audioRef.current.pause();
       } else {
-        audioRef.current.play()
+        audioRef.current.play();
       }
     }
-  }
+  };
 
   return (
     <div className="flex items-center gap-3 p-4 bg-white rounded-lg border-2 border-slate-200 hover:border-primary transition">
@@ -59,5 +56,5 @@ export default function ExercisePlayer({
       </div>
       <span className="text-slate-400">🔊</span>
     </div>
-  )
+  );
 }
