@@ -7,7 +7,7 @@
 | Sekcja | Opis |
 | :--- | :--- |
 | **Nazwa projektu i cel** | **DeutschFonetyka** — aplikacja edukacyjna (PWA) dla Polaków uczących się języka niemieckiego. Pomaga pozbyć się akcentu i wyćwiczyć mięśnie aparatu mowy poprzez analizę dźwięku, wizualizację i ćwiczenia. |
-| **Odbiorcy docelowi** | Polscy uczniowie, lektorzy, logopedzi, osoby pracujące w Niemczech, aktorzy, studenci filologii — wszyscy, którzy chcą mówić jak native. |
+| **Odbiorcy docelowi** | Polscy uczniowie, lektorzy, logopedzi, osoby pracujące w Niemczech, aktorzy, studenci filologii, niemieckie dzieci, niemcy po udarach  — wszyscy, którzy chcą mówić jak native. |
 | **Struktura projektu** | Komponenty React w folderze `/src/components`, logika w `/src/utils`, stan w `/src/state`, styl w `/src/index.css`. |
 | **Technologie** | React + TypeScript + Vite + Tailwind + Zustand + shadcn/ui + lucide-react (ikony). Testy: Vitest. |
 | **Tryb działania** | Progressive Web App (PWA) działająca w przeglądarce (desktop/mobile). Pełna funkcjonalność offline. |
