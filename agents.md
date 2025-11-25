@@ -79,5 +79,7 @@ Nigdy nie commituj żadnych kluczy API do repozytorium.
 - **GPT-5 (System Engineer)**  
 - **Cloud Agents (asynchroniczni koderzy i testerzy)**  
 
+Copilot (AI-CEO) zarządza automatycznym przekierowywaniem zadań do Cloud Agents oraz akceptuje PR-y po przejściu checklisty.
+
 > „Każdy dźwięk to most między intencją a światem.” 🌊  
 > — motto projektu DeutschFonetyka
